@@ -210,8 +210,9 @@ class FeatureQueryBase(object):
     def order_by(self, *args):
         self._order_by = args
 
-    def like(self, value):
+    def like(self, value, column=None):
         self._like = value
+        self._like_column = column
 
     def intersects(self, geom):
         self._intersects = geom
@@ -255,10 +256,11 @@ class FeatureQueryBase(object):
             l = []
             for fld in self.layer.fields:
                 if fld.datatype == FIELD_TYPE.STRING:
-                    l.append(sql.cast(
-                        sql.column(fld.keyname),
-                        sa.Unicode).ilike(
-                        '%' + self._like + '%'))
+                    if fld.keyname == self._like_column or self._like_column is None:
+                        l.append(sql.cast(
+                            sql.column(fld.keyname),
+                            sa.Unicode).ilike(
+                            '%' + self._like + '%'))
 
             select.append_whereclause(sa.or_(*l))
 
