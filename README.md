@@ -1,114 +1,14 @@
-## Установка
+Разрабатываемая веб-гис NextGIS Web обеспечивает просмотр в браузере геоданных с контролем доступа для разных пользователей.
 
-Для установки системы необходимы:
+- [Архитектура](http://wiki.gis-lab.info/w/NextGIS_Web/%D0%90%D1%80%D1%85%D0%B8%D1%82%D0%B5%D0%BA%D1%82%D1%83%D1%80%D0%B0)
+- [Основные возможности](http://wiki.gis-lab.info/w/NextGIS_Web/%D0%92%D0%BE%D0%B7%D0%BC%D0%BE%D0%B6%D0%BD%D0%BE%D1%81%D1%82%D0%B8)
+- [Установка и обновление](http://wiki.gis-lab.info/w/NextGIS_Web/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0)
+- [Слои](http://wiki.gis-lab.info/w/NextGIS_Web/%D0%A1%D0%BB%D0%BE%D0%B8)
+- [Стили](http://wiki.gis-lab.info/w/NextGIS_Web/%D0%A1%D1%82%D0%B8%D0%BB%D0%B8)
+- [Веб-карты](http://wiki.gis-lab.info/w/NextGIS_Web/%D0%92%D0%B5%D0%B1-%D0%BA%D0%B0%D1%80%D1%82%D1%8B)
+- [Права доступа](http://wiki.gis-lab.info/w/NextGIS_Web/%D0%9F%D1%80%D0%B0%D0%B2%D0%B0_%D0%B4%D0%BE%D1%81%D1%82%D1%83%D0%BF%D0%B0)
 
-* Python 2.7 и пакет virtualenv
-* БД PostgreSQL 9.1 с установленным в ней PostGIS 2.0, пользователь БД должен быть
-  владельцем БД и таблиц `geometry_columns`, `georgaphy_columns`, `spatial_ref_sys`.
-
-### Установка пакета
-
-Создаем рабочую директорию `~/ngw`:
-    
-    $ mkdir ~/ngw
-    $ cd ~/ngw
-
-Клонируем репозиторий:
-
-    $ git clone git@github.com:nextgis/nextgisweb.git
-
-Создаем виртуальное окружение virtualenv в директории `~/ngw/env`:
-
-    $ virtualenv --no-site-packages env
-
-Два пакета, необходимых для работы системы, в автоматическом режиме не
-устанавливаются, поэтому их нужно установить вручную: GDAL и mapscript.
-
-Устанавливаем GDAL. Прежде всего необходимо проверить версию GDAL, установленную
-в системе:
-
-    $ gdalinfo --version
-
-А также определить директорию с заголовочными файлами GDAL:
-
-    $ locate include | grep gdal.h
-
-Устанавливаем GDAL необходимой версии (пример установки на сервере
-NextGIS):
-
-    $ env/bin/pip install --no-install GDAL==1.8.1
-    $ cd env/build/GDAL
-    $ env/bin/python setup.py build_ext --include-dirs="/usr/local/include/"
-    $ env/bin/pip install install --no-download GDAL
-
-В дистрибутивах на базе Debian заголовочные файлы вероятнее всего будут
-в директории `/usr/include/gdal/`.
-
-В случае, если будет сообщено о том, что файл cpl_port.h не найден, следует 
-устновить переменные окружения CPLUS_INCLUDE_PATH и C_INCLUDE_PATH,
-указывающие на директорию с заголовочными файлами gdal. Например:
-
-    $ export CPLUS_INCLUDE_PATH=/usr/include/gdal
-    $ export C_INCLUDE_PATH=/usr/include/gdal
-
-Устанавливаем mapscript. mapscript должен быть установлен в системе, для
-того чтобы обеспечить его функционал в виртуальном окружении, выполняем следующие
-шаги (пример установки на сервере NextGIS):
-
-    $ cp -r `python -c "import mapscript, os.path; print os.path.split(mapscript.__file__)[0]"` env/lib/python2.7/site-packages/mapscript.egg
-    $ echo "./mapscript.egg" > env/lib/python2.7/site-packages/mapscript.pth
-
-Устанавливаем пакет в режиме разработки, при этом будут установлены все необходимые пакеты:
-
-    $ env/bin/pip install -e ./nextgisweb
-
-### Конфигурационный файл
-
-Конфигурационный с параметрами по-умолчанию может быть создан при помощи
-команды `nextgisweb-config`:
-
-    $ env/bin/nextgisweb-config > config.ini
-
-В результате будет создан конфигурационный файл `config.ini`. В этот текcтовый
-файл нужно внести изменения в соответствии со своим окружением. Назначение
-параметров указано в комментариях.
-
-Так же для работы команд pserve или pshell потребуется конфигурационный файл paster, 
-например `development.ini`. Его можно создать в любом тектовом редакторе:
-
-    [app:main]
-    use = egg:nextgisweb
-
-    # путь к основному конфигурационному файлу
-    config = %(here)s/config.ini
-    
-    # путь к конфигурационному файлу библиотеки logging
-    # logging = %(here)s/logging.ini
-
-    # полезные для отладки параметры
-    # pyramid.reload_templates = true
-    # pyramid.includes = pyramid_debugtoolbar
-
-    [server:main]
-    use = egg:waitress#main
-    host = 0.0.0.0
-    port = 6543
+![](http://wiki.gis-lab.info/images/thumb/c/c7/Nextgisweb_main_screen_20140217.png/725px-Nextgisweb_main_screen_20140217.png)
 
 
-### Инициализация БД
-
-Инициализация БД выполняется следующим образом:
-
-    $ env/bin/nextgisweb --config config.ini initialize_db
-
-В некоторых случаях, например при обновлении, может потребоваться удалить все
-существующие в БД данные и инициализировать БД повторно:
-
-    $ env/bin/nextgisweb --config config.ini initialize_db --drop
-
-
-### Запуск веб-сервера pserve:
-
-    $ env/bin/pserve development.ini
-    
-Обновлённая версия руководства - в вики    
+Смотри актуальное руководство в вики гис-лаба: http://wiki.gis-lab.info/w/NextGIS_Web
