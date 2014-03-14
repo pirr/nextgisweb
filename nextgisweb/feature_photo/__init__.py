@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import json
+import urllib2
+
 from ..component import Component, require
 
 from .models import Base, FeaturePhoto
@@ -23,13 +26,19 @@ class FeaturePhotoComponent(Component):
             comp = self
 
             def feature_data(self, feature):
-                DBSession = self.comp.env.core.DBSession
-                q = DBSession.query(FeaturePhoto.id) \
-                    .filter_by(layer_id=self.layer.id, feature_id=feature.id)
 
-                photo_ids = map(lambda row: row[0], q)
-                if len(photo_ids) > 0:
-                    return photo_ids
+                # Для проекта по Красногорску используется внешний сервис
+                # доступа к фотографиям
+                base_url = self.comp.settings['url']
+
+                table = self.layer.table
+                feature = feature.id
+
+                query = "%s/%s/%s/images/" % (base_url, table, feature)
+                images = json.loads(urllib2.urlopen(query).read())['images']
+
+                if len(images) > 0:
+                    return map(lambda image: image['id'], images)
 
             @property
             def feature_widget(self):

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import urllib2
+
 from shutil import copyfileobj
 from StringIO import StringIO
 
@@ -82,12 +84,18 @@ def setup_pyramid(comp, config):
     comp.FeaturePhotoEditWidget = FeaturePhotoEditWidget
 
     def image(request):
-        photo = DBSession.query(FeaturePhoto) \
-            .filter_by(**request.matchdict) \
-            .one()
-        filename = comp.env.file_storage.filename(photo.fileobj)
 
-        image = Image.open(filename)
+        # Для проекта по Красногорску используется внешний сервис
+        # доступа к фотографиям
+        base_url = comp.env.feature_photo.settings['url']
+
+        photo_id = request.matchdict['id']
+        query = "%s/images/%s" % (base_url, photo_id)
+
+        image = Image.open(StringIO(urllib2.urlopen(query).read()))
+
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
         # Нужна картинка определенного размера или превью
         if 'size' in request.GET:
@@ -101,6 +109,7 @@ def setup_pyramid(comp, config):
         buf.seek(0)
 
         return Response(body_file=buf, content_type="image/jpeg")
+
 
     config.add_route('feature_photo.image', '/layer/{layer_id:\d+}/feature/{feature_id:\d+}/photo/{id:\d+}') \
         .add_view(image)
