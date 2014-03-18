@@ -1,0 +1,2 @@
+.LightboxFullScreen { float:right; width:16px; height:16px; cursor:pointer; }
+.claro .LightboxFullScreen { background:url('images/fullscreen.png') no-repeat center center; }

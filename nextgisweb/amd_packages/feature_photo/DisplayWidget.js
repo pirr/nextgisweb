@@ -2,10 +2,11 @@ define([
     "dojo/_base/declare",
     "dojo/dom-construct",
     "dojo/on",
-    "dojox/image/Lightbox",
+    "feature_photo/Lightbox",
     "feature_layer/DisplayWidget",
     // css
     "xstyle/css!" + ngwConfig.amdUrl + "dojox/image/resources/Lightbox.css",
+    "xstyle/css!./resources/Lightbox.css",
     "xstyle/css!./resources/Widget.css"
 ], function (
     declare,
@@ -29,7 +30,7 @@ define([
 
             // LighboxDialog не экспортируется через AMD,
             // поэтому берем класс по полному имени
-            var dialog = new dojox.image.LightboxDialog({});
+            var dialog = new Lightbox({});
             dialog.startup();
 
             for (var idx in ext) {
