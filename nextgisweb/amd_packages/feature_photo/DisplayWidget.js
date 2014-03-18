@@ -28,8 +28,6 @@ define([
 
             this.set("disabled", !ext);
 
-            // LighboxDialog не экспортируется через AMD,
-            // поэтому берем класс по полному имени
             var dialog = new Lightbox({});
             dialog.startup();
 
