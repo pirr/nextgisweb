@@ -31,6 +31,7 @@ define([
     "./tool/Base",
     "./tool/Zoom",
     "./tool/Measure",
+    "./tool/IdentifyWMS",
     // settings
     "ngw/settings!webmap",
     // template
@@ -75,6 +76,7 @@ define([
     ToolBase,
     ToolZoom,
     ToolMeasure,
+    ToolIdentifyWMS,
     clientSettings
 ) {
 
@@ -676,6 +678,8 @@ define([
 
             this.addTool(new ToolMeasure({display: this, order: 1}));
             this.addTool(new ToolMeasure({display: this, order: 2}));
+
+            this.addTool(new ToolIdentifyWMS({display: this}));
         },
 
         _pluginsSetup: function () {
