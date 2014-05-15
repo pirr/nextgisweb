@@ -7,6 +7,7 @@ define([
     // dgrid & plugins
     'dgrid/OnDemandGrid',
     'dgrid/Selection',
+    "dgrid/selector",
     "dgrid/extensions/ColumnHider",
     "dgrid/extensions/ColumnResizer",
     // other
@@ -33,6 +34,7 @@ define([
     // dgrid & plugins
     OnDemandGrid,
     Selection,
+    selector,
     ColumnHider,
     ColumnResizer,
     // other
@@ -47,8 +49,8 @@ define([
     FeatureStore
 ) {
     // Базовый класс ggrid над которым затем делается обертка в dijit виджет
-    var GridClass = declare([OnDemandGrid, Selection, ColumnHider, ColumnResizer], {
-        selectionMode: "single"
+    var GridClass = declare([OnDemandGrid, Selection, ColumnHider, ColumnResizer, selector], {
+        selectionMode: "none"
     });
 
     return declare([BorderContainer, _TemplatedMixin, _WidgetsInTemplateMixin], {
@@ -109,7 +111,9 @@ define([
         },
 
         initializeGrid: function () {
-            var columns = [{
+            var columns = [
+            selector({label: "", selectorType: "radio", width: 40}),
+            {
                 field: "id",
                 label: "#",
                 unhidable: true
