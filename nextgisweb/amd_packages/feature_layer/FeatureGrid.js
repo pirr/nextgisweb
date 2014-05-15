@@ -116,7 +116,8 @@ define([
             {
                 field: "id",
                 label: "#",
-                unhidable: true
+                unhidable: true,
+                sortable: false
             }];
 
             var fields = [];
@@ -125,7 +126,8 @@ define([
                 columns.push({
                     field: 'F:' + f.keyname,
                     label: f.display_name,
-                    hidden: !f.grid_visibility
+                    hidden: !f.grid_visibility,
+                    sortable: false
                 });
                 fields.push(f.keyname);
             });
