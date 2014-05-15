@@ -8,6 +8,7 @@ define([
     'dgrid/OnDemandGrid',
     'dgrid/Selection',
     "dgrid/extensions/ColumnHider",
+    "dgrid/extensions/ColumnResizer",
     // other
     'dojo/_base/lang',
     'dojo/_base/array',
@@ -33,6 +34,7 @@ define([
     OnDemandGrid,
     Selection,
     ColumnHider,
+    ColumnResizer,
     // other
     lang,
     array,
@@ -45,7 +47,7 @@ define([
     FeatureStore
 ) {
     // Базовый класс ggrid над которым затем делается обертка в dijit виджет
-    var GridClass = declare([OnDemandGrid, Selection, ColumnHider], {
+    var GridClass = declare([OnDemandGrid, Selection, ColumnHider, ColumnResizer], {
         selectionMode: "single"
     });
 
