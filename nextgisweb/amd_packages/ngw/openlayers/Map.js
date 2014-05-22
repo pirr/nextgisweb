@@ -21,6 +21,8 @@ define([
                 controls: options.controls
             });
 
+            this.olMap.Z_INDEX_BASE['Popup'] = 900;
+
             this.layers = {};
             var widget = this, olMap = this.olMap;
 
