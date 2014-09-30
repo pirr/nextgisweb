@@ -85,3 +85,8 @@ class AuthComponent(Component):
             obj = Group(keyname=keyname, **kwargs).persist()
 
         return obj
+
+    settings_info = (
+        dict(key='adfs.apiurl'),
+        dict(key='adfs.endpoint'),
+    )

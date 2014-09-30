@@ -258,6 +258,27 @@ def setup_pyramid(comp, config):
     config.add_route('auth.group.browse', '/auth/group/') \
         .add_view(group_browse, renderer='nextgisweb:auth/template/group_browse.mako')
 
+    def adfs_ls(request):
+        wresult = request.POST['wresult']
+
+        from lxml import etree
+        tree = etree.fromstring(wresult)
+
+        # TODO: Add xml signature validation
+
+        node = tree.find('.//{urn:oasis:names:tc:SAML:1.0:assertion}NameIdentifier')
+        uname = node.text
+
+        try:
+            user = User.filter_by(keyname=uname).one()
+            headers = remember(request, user.id)
+            return HTTPFound(location=request.application_url, headers=headers)
+        except NoResultFound:
+            return HTTPForbidden()
+
+    config.add_route('auth.adfs.ls', '/adfs/ls/') \
+        .add_view(adfs_ls)
+
     class UserMenu(dm.DynItem):
 
         def build(self, kwargs):

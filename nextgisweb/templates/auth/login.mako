@@ -51,6 +51,7 @@
 
         </button>
 
+        <a href="${request.env.auth.settings['adfs.apiurl']}?wa=wsignin1.0&wtrealm=${request.env.auth.settings['adfs.endpoint']}">Аутентификация ADFS</a>
     </div>
 </form>
 
