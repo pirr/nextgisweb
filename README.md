@@ -1,4 +1,4 @@
-Эта инструкция проверена и работает в Ubuntu Server 13.10, Ubuntu Server 12.04 LTS, Ubuntu Desktop 13.04
+Эта инструкция проверена и работает в Ubuntu Server 13.10, Ubuntu Server 12.04 LTS, Ubuntu Desktop 13.04, Ubuntu Server 14.04 LTS
 
 ## Установка
 
@@ -64,7 +64,9 @@
 
 Установить дополнительные инструменты: 
 
-    $ sudo apt-get install python-mapscript git libgdal-dev python-dev g++ libxml2-dev libxslt1-dev
+    $ sudo apt-get install python-mapscript git libgdal-dev python-dev g++ libxml2-dev libxslt1-dev gdal-bin
+
+Для большинства случаев ключи генерировать не нужно! Это необходимо при разработке.
 
 Генерируем ключи для работы с GitHub (копируем и вставляем ключ в настройки пользователя GitHub в разделе SSH keys, https://github.com/settings/ssh):
 
@@ -86,7 +88,13 @@
     $ mkdir ~/ngw/data_storage
     $ cd ~/ngw
 
+
 Клонируем репозиторий:
+
+На гитхабе рекомендуют клонировать вот так (рекомендуется):
+    $ git clone https://github.com/nextgis/nextgisweb.git
+    
+Также можно склонировать вот так:
 
     $ git clone git@github.com:nextgis/nextgisweb.git
 
@@ -205,3 +213,80 @@
 ### Фичи
 
 На данный момент при добавлении двух слоёв с одинаковым названием возникает ошибка.
+
+При добавлении слоя из PostGIS сейчас нужно указать проекцию EPSG:3857
+
+При миграции рекомендуется копировать тематические данные из баз PostGIS следующим образом:
+1. В девелоперской сборке программы NextGIS Manager перетащить через drag-and-drop по одной схеме между базами.
+2. В PgAdmin выставить для скопированых схем права на чтение для public (или для пользователя БД под которым обращается NextGISWeb) 
+ 
+
+Импорт картостилей из qml с условиями сейчас работает некорректно. После импорта нужно немного изменить стиль вручную. Так же устарела инструкция.
+Непустое условие в картостиле пишется так:  <expression>"птицы"</expression>
+Пустое условие в картостиле пишется так: <expression>''</expression>
+
+Пример работающего картостиля с условиями:
+```
+<map>
+  <layer>
+    <classitem>Group</classitem>
+    <class>
+      <expression>''</expression>
+      <style>
+        <width>10.9417322835</width>
+        <color red="179" green="146" blue="251"/>
+        <linecap>square</linecap>
+        <linejoin>bevel</linejoin>
+        <!-- Остались необработанные атрибуты: offset_unit, draw_inside_polygon, width_unit, customdash_unit, customdash_map_unit_scale, offset_map_unit_scale, width_map_unit_scale -->
+      </style>
+    </class>
+    <class>
+      <expression>"млекопитающие"</expression>
+      <style>
+        <width>10.9417322835</width>
+        <color red="82" green="193" blue="119"/>
+        <linecap>square</linecap>
+        <linejoin>bevel</linejoin>
+        <!-- Остались необработанные атрибуты: offset_unit, draw_inside_polygon, width_unit, customdash_unit, customdash_map_unit_scale, offset_map_unit_scale, width_map_unit_scale -->
+      </style>
+    </class>
+    <class>
+      <expression>"насекомые"</expression>
+      <style>
+        <width>10.9417322835</width>
+        <color red="139" green="75" blue="64"/>
+        <linecap>square</linecap>
+        <linejoin>bevel</linejoin>
+        <!-- Остались необработанные атрибуты: offset_unit, draw_inside_polygon, width_unit, customdash_unit, customdash_map_unit_scale, offset_map_unit_scale, width_map_unit_scale -->
+      </style>
+    </class>
+    <class>
+      <expression>"птицы"</expression>
+      <style>
+        <width>10.9417322835</width>
+        <color red="55" green="90" blue="205"/>
+        <linecap>square</linecap>
+        <linejoin>bevel</linejoin>
+        <!-- Остались необработанные атрибуты: offset_unit, draw_inside_polygon, width_unit, customdash_unit, customdash_map_unit_scale, offset_map_unit_scale, width_map_unit_scale -->
+      </style>
+    </class>
+  </layer>
+</map>
+```
+
+
+
+
+
+
+### В случае ошибки
+
+* sqlalchemy.exc.ProgrammingError: (ProgrammingError) permission denied for database zapoved_ore_ngw
+  Пользователю не хватает прав в базе. Он должен быть владельцем базы, и таблиц, см. в начале инструкции
+
+* KeyError: 'database.host'
+  Опечатка в конфиге
+
+* OSError: [Errno 13] Permission denied: '/home/trolleway/ngw_ore/data_storage/raster_layer/79'
+  Выставите права на запись растров в data_storage используя sudo mc
+  sudo chmod 755 -R ./data_storage
