@@ -59,6 +59,22 @@
 
     %if not custom_layout:
 
+        <div id="super-header" class="pure-g super-header">
+            <div class="pure-u-1-2">
+                <div class="logo"><img src="${request.static_url('nextgisweb:static/img/logo.jpg')}"></div>
+                <div class="ministry-agency-container">
+                    <div class="ministry-name">Министерство транспорта Российской Федерации</div>
+                    <div class="agency-name">Федеральное дорожное агентство</div>
+                </div>
+            </div>
+            <div class="pure-u-1-2">
+                <div class="system-name">
+                    Система оперативного мониторинга транспортно-эксплуатационного состояния 
+                    федеральных автомобильных дорог
+                </div>
+            </div>
+        </div>
+
         <div id="header" class="header">
 
             <div class="home-menu pure-menu pure-menu-open pure-menu-horizontal">
@@ -159,7 +175,7 @@
                 var content = dom.byId("content-wrapper"),
                     header = [ ];
 
-                for (var id in {"header": true, "title": true}) {
+                for (var id in {"super-header": true, "header": true, "title": true}) {
                     var node = dom.byId(id);
                     if (node) { header.push(node) }
                 }

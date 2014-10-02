@@ -5,6 +5,37 @@ body { font-size: 12px; }
 
 /* -- LAYOUT STYLES -- */
 
+@font-face {
+    font-family: 'PTSansBold';
+    src: url('../fonts/pts75f.eot');
+    src: url('../fonts/pts75f.eot?#iefix') format('embedded-opentype'),
+    url('../fonts/pts75f.woff') format('woff'),
+    url('../fonts/pts75f.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'PTSansRegular';
+    src: url('../fonts/pts55f.eot');
+    src: url('../fonts/pts55f.eot?#iefix') format('embedded-opentype'),
+    url('../fonts/pts55f.woff') format('woff'),
+    url('../fonts/pts55f.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+.super-header { 
+    background-image: url('../img/bg-super-header.png');
+    background-position: 0 100%;
+}
+    .super-header .logo { margin: 15px 20px 15px 30px ; float: left; }
+    .super-header .system-name { font-size: 17px; font-family: PTSansBold, serif; }
+    .super-header .ministry-name { font-size: 13px; font-family: PTSansBold, serif; }
+    .super-header .agency-name { font-size: 22px; font-family: PTSansBold, serif; }
+    .super-header .ministry-agency-container { margin: 25px 0 0 0; }
+    .super-header .system-name { margin: 25px 20px 0 20px; }
+
 .header { }
 
     .header .pure-menu { background: #2D3E50; }
