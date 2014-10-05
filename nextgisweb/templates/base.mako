@@ -148,7 +148,7 @@
                     </div>
 
                     %if has_dynmenu:
-                        <div class="pure-u-4-24"><div style="padding-left: 1em;">
+                        <div class="pure-u-4-24"><div style="padding-left: 1em; padding-right: 1.5em;">
                             <%include file="dynmenu.mako" args="dynmenu=dynmenu, args=dynmenu_kwargs" />
                         </div></div>
                     %endif

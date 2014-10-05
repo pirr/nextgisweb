@@ -79,6 +79,8 @@ body { font-size: 12px; }
 
 .pure-menu li a, .pure-menu .pure-menu-heading { padding: 0.25ex 0.25ex; }
 
+.pure-menu .pure-menu-heading { text-transform: none; font-size: 120%; }
+
 /* -- TABLES -- */
 
 .pure-table tbody th { background: none repeat scroll 0 0 #E0E0E0; }
