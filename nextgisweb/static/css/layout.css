@@ -48,7 +48,6 @@ body { font-size: 12px; }
     .header li a:hover,
     .header li a:focus {
         background: none;
-        border: none;
         color: #0071BC; }
     
     .header .pure-menu a {
