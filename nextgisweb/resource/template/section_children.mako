@@ -9,7 +9,7 @@
         </tr>
     </thead>
     %for idx, child in enumerate(obj.children, start=1):
-        <tr>
+        <tr class="${'pure-table-even' if idx % 2 else 'pure-table-odd'}">
             <td>${idx}</td>
             <td><a style="display: block" href="${child.permalink(request)}">${child.display_name}</a></td>
             <td>${child.cls_display_name}</td>
