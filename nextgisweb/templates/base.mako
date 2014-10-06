@@ -79,25 +79,29 @@
 
             <div class="home-menu pure-menu pure-menu-open pure-menu-horizontal">
                 
-                <a class="pure-menu-heading" href="${request.application_url}">
-                    ${request.env.core.settings['system.full_name']}
-                </a>
+                <ul class="lmenu">
 
-                <ul>
+                    <li><a href="${request.application_url}">${request.env.core.settings['system.full_name']}</a></li>
+                    <span class="separator"></span>
                     <li><a href="${request.route_url('resource.root')}">Ресурсы</a></li>
-
                     %if request.user.is_administrator:
+                        <span class="separator"></span>
                         <li><a href="${request.route_url('pyramid.control_panel')}">Панель управления</a></li>
                     %endif
+
+                </ul>
+
+                <ul class="rmenu">
 
                     %if request.user.keyname == 'guest':
                         <li><a href="${request.route_url('auth.login')}">Вход</a></li>
                     %else:
-                        <li class="user">${request.user}</li>
+                        <li class="user"><a href="#">${request.user}</a></li>
+                        <li>|</li>
+                        <li class="help"><a href="${request.route_url('pyramid.help_page')}">&nbsp;</a></li>
+                        <li>|</li>
                         <li><a href="${request.route_url('auth.logout')}">Выход</a></li>
                     %endif
-
-                    <li><a href="${request.route_url('pyramid.help_page')}">Справка</a></li>
 
                 </ul>
             </div>

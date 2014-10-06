@@ -38,17 +38,22 @@ body { font-size: 12px; }
 
 .header { }
 
-    .header .pure-menu { background: #2D3E50; }
+    .header .pure-menu {
+        background: #F1F3F9;
+        border-width: 1px 0;
+        border-style: solid;
+        border-color: #CBCBCB;
+        padding: 0.7em 0; }
     
     .header li a:hover,
     .header li a:focus {
         background: none;
         border: none;
-        color: #AECFE5; }
+        color: #0071BC; }
     
     .header .pure-menu a {
         padding: 0.5ex 1ex;
-        color: #6FBEF3; }
+        color: #0071BC; }
 
     .header .pure-menu .pure-menu-heading {
         color: white;
@@ -56,9 +61,18 @@ body { font-size: 12px; }
         font-size: 14px;
         text-transform: none; }
 
-    .header .pure-menu ul { float: right; }
+    .header .pure-menu ul.rmenu { float: right; }
+    .header .pure-menu ul.lmenu { float: none; }
 
-    .header .pure-menu ul li.user { color: white; }
+    .header .pure-menu ul li.user a { cursor: default; }
+    .header .pure-menu ul li.help { width: 20px; height: 20px; background: url(../img/question.png) no-repeat left; }
+
+    .header .pure-menu ul.lmenu .separator {
+        border-style: solid;
+        border-width: 0 1px;
+        border-left-color: #98c8ff;
+        border-right-color: white;
+    }
 
 .title {
     padding: 0.5ex 1ex;
@@ -86,6 +100,7 @@ body { font-size: 12px; }
 .pure-table tbody th { background: none repeat scroll 0 0 #E0E0E0; }
 
 /* -- CONTENT STYLES -- */
+
 
 .content { padding: 6px; }
 
