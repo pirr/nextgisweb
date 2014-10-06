@@ -2,7 +2,7 @@
 
 <% from nextgisweb import dynmenu as dm %>
 
-<div class="pure-menu pure-menu-open" style="padding: 0 1em 0 .5em; border-color: #dfdfdf;"><ul>
+<div class="pure-menu pure-menu-open" style="border-color: #dfdfdf;"><ul>
 %for item in dynmenu.build(args):
     %if isinstance(item, dm.Label):
         <li class="pure-menu-heading">${item.label}</li>

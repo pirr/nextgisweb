@@ -89,10 +89,9 @@ body { font-size: 12px; }
 /* -- MENU STYLES -- */
 
 .pure-menu a { color: inherit; }
-
 .pure-menu li a, .pure-menu .pure-menu-heading { padding: 0.25ex 0.25ex; }
-
 .pure-menu .pure-menu-heading { text-transform: none; font-size: 120%; }
+.pure-menu-open>ul { margin: 0 1em 0 .5em; }
 
 /* -- TABLES -- */
 
