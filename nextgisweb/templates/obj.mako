@@ -43,7 +43,7 @@
             <% first = True %>
             %for parent in parents:
                 %if not first:
-                    &rarr;
+                    &#x25B8;
                 %endif
                 <% first = False %>
                 <span>
@@ -52,18 +52,23 @@
                 %else:
                     ${parent}
                 %endif
-                </span> 
+                </span>
             %endfor
+            &#x25B8;
+            %if subtitle:
+                <a href="#">${subtitle}</a>
+            %elif obj:
+                <a href="#">${obj}</a>
+            %endif
         </div>
+    %else:
+        %if subtitle:
+            <a href="#">${subtitle}</a>
+        %elif obj:
+            <a href="#">${obj}</a>
+        %endif
     %endif
 
-    %if subtitle:
-        <h1>${subtitle}</h1>
-    %elif obj:
-        <h1>
-            ${obj}
-        </h1>
-    %endif
 </%def>
 
 
