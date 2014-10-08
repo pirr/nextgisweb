@@ -51,7 +51,7 @@
 
         </button>
 
-        <button data-dojo-type="dijit.form.Button" type="button" id="items">Аутентификация ADFS
+        <button data-dojo-type="dijit/form/Button" type="button" id="items">Аутентификация ADFS
             <script type="dojo/connect" data-dojo-event="onClick">
                 window.location = "${request.env.auth.settings['adfs.apiurl']}?wa=wsignin1.0&wtrealm=${request.env.auth.settings['adfs.endpoint']}";
             </script>
