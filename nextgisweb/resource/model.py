@@ -5,7 +5,7 @@ from collections import namedtuple, OrderedDict
 from bunch import Bunch
 
 from .. import db
-from ..models import declarative_base
+from ..models import declarative_base, DBSession
 from ..registry import registry_maker
 from ..auth import Principal, User, Group
 
@@ -223,9 +223,34 @@ class Resource(Base):
     def _validate_parent(self, key, value):
         """ Проверка на создание замкнутых циклов в иерархии """
 
-        if value is not None:
-            if self == value or self in value.parents:
-                raise ValidationError("Resource hierarchy loop detected!")
+        with DBSession.no_autoflush:
+            if value is not None:
+                if self == value or self in value.parents:
+                    raise ValidationError("Resource hierarchy loop detected!")
+
+        return value
+
+    @db.validates('display_name')
+    def _validate_display_name(self, key, value):
+        """ Проверка на уникальность имени внутри родителя """
+
+        with DBSession.no_autoflush:
+            if self.parent:
+                children = self.parent.children
+                ids = (c.id for c in children)
+                display_names = (c.display_name for c in children)
+                if value in display_names and self.id not in ids:
+                    raise ValidationError(u"Имя ресурса не уникально внутри родителя.")
+
+        return value
+
+    @db.validates('keyname')
+    def _validate_keyname(self, key, value):
+        """ Проверка на уникальность ключа """
+
+        with DBSession.no_autoflush:
+            if Resource.filter(Resource.keyname == value, Resource.id != self.id).first():
+                raise ValidationError(u"Ключ ресурса не уникален.")
 
         return value
 
