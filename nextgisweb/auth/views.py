@@ -44,6 +44,11 @@ def setup_pyramid(comp, config):
 
     def logout(request):
         headers = forget(request)
+        if 'adfs.apiurl' in comp.settings:
+            return HTTPFound(
+                location=comp.settings['adfs.apiurl'] + '?wa=wsignout1.0',
+                headers=headers)
+
         return HTTPFound(location=request.application_url, headers=headers)
 
     config.add_route('auth.logout', '/logout').add_view(logout)
