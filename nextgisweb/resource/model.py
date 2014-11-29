@@ -16,7 +16,7 @@ from .serialize import (
     SerializedRelationship as SR,
     SerializedResourceRelationship as SRR)
 from .scope import ResourceScope, MetadataScope
-from .exception import ResourceError, ValidationError, Forbidden
+from .exception import ValidationError, Forbidden
 
 __all__ = ['Resource', ]
 
@@ -132,10 +132,6 @@ class Resource(Base):
     def __unicode__(self):
         return self.display_name
 
-    def check_child(self, child):
-        """ Может ли этот ресурс принять child в качестве дочернего """
-        return False
-
     @classmethod
     def check_parent(self, parent):
         """ Может ли этот ресурс быть дочерним для parent """
@@ -226,7 +222,8 @@ class Resource(Base):
         with DBSession.no_autoflush:
             if value is not None:
                 if self == value or self in value.parents:
-                    raise ValidationError("Resource hierarchy loop detected!")
+                    raise ValidationError(
+                        "Невозможно переместить ресурс внутрь дочернего.")
 
         return value
 
@@ -235,8 +232,11 @@ class Resource(Base):
         """ Проверка на уникальность ключа """
 
         with DBSession.no_autoflush:
-            if value is not None and Resource.filter(Resource.keyname == value, Resource.id != self.id).first():
-                raise ValidationError(u"Ключ ресурса не уникален.")
+            if value is not None and Resource.filter(
+                Resource.keyname == value,
+                Resource.id != self.id
+            ).first():
+                raise ValidationError("Ключ ресурса не уникален.")
 
         return value
 
@@ -264,9 +264,10 @@ class _parent_attr(SRR):
             raise Forbidden()
 
         if not srlzr.obj.check_parent(srlzr.obj.parent):
-            raise ResourceError("Parentship error")
-
-        # TODO: check_child
+            raise ValidationError(
+                "Ресурс не может дочерним ресурсом для ID=%d. "
+                "Тип ресурса - %s, родительского ресурса - %s."
+                % (srlzr.obj.parent.id, srlzr.obj.cls, srlzr.obj.parent.cls))
 
 
 class _perms_attr(SP):
@@ -282,7 +283,7 @@ class _perms_attr(SP):
                 permission=itm['permission'],
                 propagate=itm['propagate'],
                 action=itm['action'])
-            
+
             rule.principal = Principal.filter_by(
                 id=itm['principal']['id']).one()
 
@@ -351,6 +352,31 @@ class ResourceSerializer(Serializer):
     interfaces = _ro(_interfaces_attr)
     scopes = _ro(_scopes_attr)
 
+    def deserialize(self, *args, **kwargs):
+        # Поскольку выполнение требования на уникальное наиVaенование внутри
+        # группы зависит от двух атрибутов (parent, display_name). Корректно
+        # проверить его выполнени можно после сериализации обоих атрибутов.
+
+        # Сохраняем старые значения, чтобы отследить изменения.
+        parent, display_name = self.obj.parent, self.obj.display_name
+
+        super(ResourceSerializer, self).deserialize(*args, **kwargs)
+
+        if parent != self.parent or display_name != self.display_name:
+            with DBSession.no_autoflush:
+                conflict = Resource.filter(
+                    Resource.parent_id == self.obj.parent.id
+                    if self.obj.parent is not None else None,
+                    Resource.display_name == self.obj.display_name,
+                    Resource.id != self.obj.id
+                ).first()
+
+            if conflict is not None:
+                raise ValidationError(
+                    "Наименование ресурса не уникально, одноименный дочерний "
+                    "ресурс (ID=%d) существует у родительского ресурса "
+                    "(ID=%d)." % (conflict.id, conflict.parent_id))
+
 
 class ResourceACLRule(Base):
     __tablename__ = "resource_acl_rule"
@@ -404,10 +430,6 @@ class ResourceACLRule(Base):
 class ResourceGroup(Resource):
     identity = 'resource_group'
     cls_display_name = "Группа ресурсов"
-
-    def check_child(self, child):
-        # Принимаем любые дочерние ресурсы
-        return True
 
     @classmethod
     def check_parent(self, parent):

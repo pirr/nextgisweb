@@ -18,7 +18,8 @@ from ..resource import (
     SerializedResourceRelationship as SRR,
     ResourceError,
     ValidationError,
-    ForbiddenError)
+    ForbiddenError,
+    ResourceGroup)
 from ..env import env
 from ..geometry import geom_from_wkt, box
 from ..layer import SpatialLayerMixin
@@ -59,7 +60,7 @@ class PostgisConnection(Base, Resource):
 
     @classmethod
     def check_parent(self, parent):
-        return parent.cls == 'resource_group'
+        return isinstance(parent, ResourceGroup)
 
     def get_engine(self):
         comp = env.postgis
@@ -81,6 +82,24 @@ class PostgisConnection(Base, Resource):
             'postgresql+psycopg2',
             host=self.hostname, database=self.database,
             username=self.username, password=self.password)))
+
+        @db.event.listens_for(engine, 'connect')
+        def _connect(dbapi, record):
+            comp.logger.debug(
+                "Resource #%d, pool 0x%x, connection 0x%x created",
+                self.id, id(dbapi), id(engine))
+
+        @db.event.listens_for(engine, 'checkout')
+        def _checkout(dbapi, record, proxy):
+            comp.logger.debug(
+                "Resource #%d, pool 0x%x, connection 0x%x retrieved",
+                self.id, id(dbapi), id(engine))
+
+        @db.event.listens_for(engine, 'checkin')
+        def _checkin(dbapi, record):
+            comp.logger.debug(
+                "Resource #%d, pool 0x%x, connection 0x%x returned",
+                self.id, id(dbapi), id(engine))
 
         engine._credhash = credhash
 
@@ -136,7 +155,7 @@ class PostgisLayer(Base, Resource, SpatialLayerMixin, LayerFieldsMixin):
 
     @classmethod
     def check_parent(self, parent):
-        return parent.cls == 'resource_group'
+        return isinstance(parent, ResourceGroup)
 
     def get_info(self):
         return super(PostgisLayer, self).get_info() + (
@@ -223,7 +242,7 @@ class PostgisLayer(Base, Resource, SpatialLayerMixin, LayerFieldsMixin):
 
             for row in result:
                 if row['column_name'] == self.column_id:
-                    if row['data_type'] != 'integer':
+                    if row['data_type'] not in ['integer', 'bigint']:
                         raise ValidationError(u"Для использования поля в качестве идентификатора необходим тип integer.")  # NOQA
                     colfound_id = True
 

@@ -1,6 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <%
+    import os
     import json
     from bunch import Bunch
 %>
@@ -8,7 +9,7 @@
 
     <title>
         %if hasattr(self, 'title'):
-            ${self.title()} :: 
+            ${self.title()} ::
         %endif
 
         ${request.env.core.settings['system.name']}
@@ -25,7 +26,7 @@
 
     <link href="${request.static_url('nextgisweb:static/css/icon.css')}"
         rel="stylesheet" type="text/css" media="screen"/>
- 
+
     <link href="${request.route_url('amd_package', subpath='dijit/themes/claro/claro.css')}"
         rel="stylesheet" media="screen"/>
 
@@ -144,7 +145,7 @@
                     %else:
                         <% has_dynmenu = False %>
                     %endif
-                
+
                     <div class="pure-u-${"20-24" if has_dynmenu else "1"} expand">
                         %if hasattr(next, 'body'):
                             ${next.body()}
@@ -164,9 +165,9 @@
         </div>
 
     %else:
-    
+
         ${next.body()}
-    
+
     %endif
 
 

@@ -1,20 +1,22 @@
 # -*- coding: utf-8 -*-
+import os
 import sys
 from hashlib import md5
 import re
 import codecs
 from StringIO import StringIO
+from urllib2 import unquote
 
 from pyramid.config import Configurator
 from pyramid.authentication import (
     AuthTktAuthenticationPolicy,
     BasicAuthAuthenticationPolicy)
 from pyramid.authorization import ACLAuthorizationPolicy
-from pyramid.httpexceptions import HTTPForbidden
+from pyramid.httpexceptions import HTTPForbidden, HTTPNotFound
+from pyramid.response import FileResponse
 
 import pyramid_tm
 import pyramid_mako
-
 
 from .component import Component
 from .auth import User
@@ -280,13 +282,19 @@ class PyramidComponent(Component):
         for l in buf:
             l = l.strip().lower()
 
+            pkgtuple = None
             mpkg = re.match(r'(.+)==(.+)', l)
             if mpkg:
-                self.pkginfo.append(tuple(mpkg.groups()))
+                pkgtuple = tuple(mpkg.groups())
 
-            mgit = re.match(r'-e\sgit\+git\@.+?\@.+(.{8})\#egg=(\w+).*', l)
+            mgit = re.match(r'-e\sgit\+.+\@(.{8}).{32}\#egg=(\w+).*$', l)
             if mgit:
-                self.pkginfo.append(tuple(reversed(mgit.groups())))
+                pkgtuple = tuple(reversed(mgit.groups()))
+
+            if pkgtuple is not None:
+                self.pkginfo.append(pkgtuple)
+            else:
+                self.logger.warn("Could not parse pip freeze line: %s", l)
 
         config.add_static_view(
             '/static%s/asset' % static_key,
@@ -325,11 +333,32 @@ class PyramidComponent(Component):
                                 [(k, '__%s__' % k)
                                  for k in p.val])),
                             keys=p.val)
-
             return result
 
         config.add_route('pyramid.routes', '/pyramid/routes') \
             .add_view(routes, renderer='json', json=True)
+
+        def route(request):
+            result = dict()
+
+            route_re = re.compile(r'\{(\w+):{0,1}')
+
+            introspector = request.registry.introspector
+            for itm in introspector.get_category('routes'):
+                route = itm['introspectable']['object']
+                for p in route.predicates:
+                    if isinstance(p, ClientRoutePredicate):
+                        kys = route_re.findall(route.path)
+                        kvs = dict([
+                            (k, '{%d}' % idx)
+                            for idx, k in enumerate(kys)])
+                        tpl = unquote(route.generate(kvs))
+                        result[route.name] = [tpl, ] + kys
+
+            return result
+
+        config.add_route('pyramid.route', '/api/component/pyramid/route') \
+            .add_view(route, renderer='json')
 
         def control_panel(request):
             if not request.user.is_administrator:
@@ -346,6 +375,26 @@ class PyramidComponent(Component):
 
         config.add_route('pyramid.help_page', '/help-page') \
             .add_view(help_page, renderer="pyramid/help_page.mako")
+
+        def logo(request):
+            settings = request.env.pyramid.settings
+            if 'logo' in settings and os.path.isfile(settings['logo']):
+                return FileResponse(settings['logo'], request=request)
+            else:
+                raise HTTPNotFound()
+
+        config.add_route('pyramid.logo', '/logo').add_view(logo)
+
+        def favicon(request):
+            settings = request.env.pyramid.settings
+            if 'favicon' in settings and os.path.isfile(settings['favicon']):
+                return FileResponse(settings['favicon'],
+                                    request=request,
+                                    content_type='image/x-icon')
+            else:
+                raise HTTPNotFound()
+
+        config.add_route('pyramid.favicon', '/favicon.ico').add_view(favicon)
 
         def pkginfo(request):
             return dict(title=u"Версии пакетов",
@@ -364,5 +413,7 @@ class PyramidComponent(Component):
 
     settings_info = (
         dict(key='secret', desc=u"Ключ, используемый для шифрования cookies (обязательно)"),
-        dict(key='help_page', desc=u"HTML-справка")
+        dict(key='help_page', desc=u"HTML-справка"),
+        dict(key='logo', desc=u"Логотип системы"),
+        dict(key='favicon', desc=u"Значок для избранного")
     )
