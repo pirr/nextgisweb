@@ -89,6 +89,8 @@
 
                     <li><a href="${request.route_url('pyramid.help_page')}">Справка</a></li>
 
+                    <li><a href="${request.route_url('resource.search', _query={'q':'""'})}">Поиск ресурсов</a></li>
+
                 </ul>
             </div>
 

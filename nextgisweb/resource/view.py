@@ -127,7 +127,7 @@ def store(request):
     return result
 
 
-@viewargs(renderer='json')
+@viewargs(renderer='search.mako')
 def search(request):
     # Подстрока поиска ресурсов
     q = request.params.get('q')
@@ -159,12 +159,9 @@ def search(request):
         if not res.has_permission(PERM_READ, request.user):
             continue
 
-        serializer = ResourceSerializer(res, request.user)
-        serializer.serialize()
-        itm = serializer.data
-        result.append(itm)
+        result.append(res)
 
-    return result
+    return dict(resources=result, title=u"Поиск ресурсов")
 
 
 @viewargs(renderer='nextgisweb:resource/template/composite_widget.mako')
