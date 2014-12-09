@@ -6,7 +6,7 @@ from pyramid import httpexceptions
 
 from sqlalchemy.orm.exc import NoResultFound
 
-
+from .. import db
 from ..views import permalinker
 from ..dynmenu import DynMenu, Label, Link, DynItem
 from ..psection import PageSections
@@ -127,6 +127,46 @@ def store(request):
     return result
 
 
+@viewargs(renderer='json')
+def search(request):
+    # Подстрока поиска ресурсов
+    q = request.params.get('q')
+    q = q if q else None
+
+    query = Resource.query()
+
+    if q is not None:
+        # Импорт не работает, если вынести из функции
+        from ..resmeta.model import ResourceMetadataItem
+
+        l = []
+        res_search_fields = ('keyname', 'display_name', 'description')
+        resmeta_search_fields = ('key', 'vinteger', 'vfloat', 'vtext')
+
+        # Фильтрация по атрибутам ресурса
+        for k in res_search_fields:
+            l.append(db.sql.cast(getattr(Resource, k), db.Unicode).ilike('%' + q + '%'))
+
+        # Фильтрация по атрибутам метаданных
+        for k in resmeta_search_fields:
+            l.append(db.sql.cast(getattr(ResourceMetadataItem, k), db.Unicode).ilike('%' + q + '%'))
+
+        query = query.outerjoin(Resource.resmeta).filter(db.or_(*l))
+
+    result = []
+
+    for res in query:
+        if not res.has_permission(PERM_READ, request.user):
+            continue
+
+        serializer = ResourceSerializer(res, request.user)
+        serializer.serialize()
+        itm = serializer.data
+        result.append(itm)
+
+    return result
+
+
 @viewargs(renderer='nextgisweb:resource/template/composite_widget.mako')
 def create(request):
     return dict(obj=request.context, subtitle="Создать ресурс", maxheight=True,
@@ -236,6 +276,8 @@ def setup_pyramid(comp, config):
     _resource_route('tree', '{id:\d+}/tree', client=('id', )).add_view(tree)
 
     _route('store', 'store/{id:\d*}', client=('id', )).add_view(store)
+
+    _route('search', 'search', client=('id', )).add_view(search)
 
     _route('widget', 'widget', client=()).add_view(widget)
 
