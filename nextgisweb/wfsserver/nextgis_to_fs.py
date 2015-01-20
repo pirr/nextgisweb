@@ -10,6 +10,7 @@ import shapely
 
 import geojson
 
+from nextgisweb.feature_layer import Feature as NgwFwature
 from nextgisweb.feature_layer import IWritableFeatureLayer, GEOM_TYPE, FIELD_TYPE
 
 from .third_party.FeatureServer.DataSource import DataSource
@@ -29,38 +30,66 @@ class NextgiswebDatasource(DataSource):
         self.fid_col = 'id'
         self.layer = kwargs["layer"]
         self.title = kwargs["title"]
-        self.query = self.layer.feature_query()
-        self.srid_out = self.layer.srs_id
+        self.query = None       # Назначим потом (чтобы не производить лишних запросов к БД на этом этапе
         self.type = 'NextgisWeb'
         if 'attribute_cols' in kwargs:
-            self.attribute_cols = kwargs['attribute_cols']
+            self.attribute_cols = kwargs['attribute_cols'].split(',')
         else:
-            self.set_attribute_cols(self.query)
+            self.attribute_cols = None      # Назначим потом (чтобы не производить лишних запросов к БД на этом этапе)
 
+    @property
+    def srid_out(self):
+        return self.layer.srs_id
+
+    @property
+    def geometry_type(self):
         if self.layer.geometry_type == GEOM_TYPE.POINT:
-            self.geometry_type = 'Point'
+            geometry_type = 'Point'
         elif self.layer.geometry_type == GEOM_TYPE.LINESTING:
-            self.geometry_type = 'Line'
+            geometry_type = 'Line'
         elif self.layer.geometry_type == GEOM_TYPE.POLYGON:
-            self.geometry_type = 'Polygon'
+            geometry_type = 'Polygon'
         else:
             raise NotImplementedError
 
+        return geometry_type
+
+    @property
+    def geom_col(self):
+
         # Setup geometry column name. But some resources do not provide the name
         try:
-            self.geom_col = self.layer.column_geom
+            geom_col = self.layer.column_geom
         except AttributeError:
-            self.geom_col = u'geom'
+            geom_col = u'geom'
+
+        return geom_col
 
     @property
     def writable(self):
         # Можно ли редактировать слой
         return IWritableFeatureLayer.providedBy(self.layer)
 
+    def _setup_query(self):
+        if self.query is None:
+            self.query = self.layer.feature_query()
+
+    def set_attribute_cols(self):
+        columns = [f.keyname for f in self.layer.fields]
+        self.attribute_cols = columns
+
+    def get_attribute_cols(self):
+        if self.attribute_cols is None:
+            self.set_attribute_cols()
+
+        return self.attribute_cols
+
     # FeatureServer.DataSource
     def select (self, params):
+        if self.query is None:
+            self._setup_query()
+
         self.query.filter_by()
-        # query.filter_by(OSM_ID=2379362827)
         self.query.geom()
         result = self.query()
 
@@ -84,7 +113,8 @@ class NextgiswebDatasource(DataSource):
             return None
 
         if action.wfsrequest != None:
-            data = action.wfsrequest.getStatement(self)
+            if self.query is None:
+                self._setup_query()
 
             data = action.wfsrequest.getStatement(self)
             data = geojson.loads(data)
@@ -121,13 +151,22 @@ class NextgiswebDatasource(DataSource):
 
         if action.wfsrequest != None:
             data = action.wfsrequest.getStatement(self)
-            feature = geojson.loads(data)
 
-            # геометрия должна быть в shapely
-            feature[self.geom_col] = self._geom_from_gml(feature[self.geom_col])
+            feature_dict = geojson.loads(data)
+
+            # геометрия должна быть в shapely,
+            # т.к. ngw Feature хранит геометрию в этом виде
+            geom = self._geom_from_gml(feature_dict[self.geom_col])
+
+            # Поле геометрии в словаре аттрибутов теперь не нужно:
+            feature_dict.pop(self.geom_col)
+
+            feature = NgwFwature(fields=feature_dict, geom=geom)
 
             feature_id = self.layer.feature_create(feature)
-            return InsertResult(feature_id, "")
+
+            id = str(feature_id)
+            return InsertResult(id, "")
 
         return None
 
@@ -161,11 +200,6 @@ class NextgiswebDatasource(DataSource):
             field_type = field_type.lower()
 
         return (field_type, length)
-
-    def set_attribute_cols(self, query):
-        columns = [f.keyname for f in query.layer.fields]
-        self.attribute_cols = ','.join(columns)
-
 
     def _geom_from_gml(self, gml):
         """Создание геометрии из GML.
