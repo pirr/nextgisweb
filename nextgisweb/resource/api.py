@@ -7,6 +7,8 @@ from collections import OrderedDict
 
 from pyramid.response import Response
 
+from .. import db
+
 from ..env import env
 from ..models import DBSession
 from ..auth import User
@@ -263,6 +265,48 @@ def item_delete(context, request):
         content_type=b'application/json')
 
 
+def item_search(request):
+    query = Resource.query()
+
+    q = request.params.get('q', None)
+    if q is not None:
+        from ..resmeta.model import ResourceMetadataItem
+
+        conds = list()
+        resource_search_flds = ('keyname', 'display_name', 'description')
+        resmeta_search_flds  = ('key', 'vinteger', 'vfloat', 'vtext')
+
+        for fld in resource_search_flds:
+            conds.append(db.sql.cast(getattr(Resource, fld), db.Unicode).ilike('%' + q + '%'))
+
+        for fld in resmeta_search_flds:
+            conds.append(db.sql.cast(getattr(ResourceMetadataItem, fld), db.Unicode).ilike('%' + q + '%'))
+
+        query = query.outerjoin(Resource.resmeta).filter(db.or_(*conds))
+
+    result = list()
+    for resource in query:
+        current = resource
+        if current.has_permission(PERM_READ, request.user):
+            parents = []
+            while current:
+                if hasattr(current, 'parent') and current.parent:
+                    parents.insert(0, current.parent.id)
+                    current = current.parent
+                else:
+                    current = None
+
+            result.append(
+                dict(
+                    resource_id=resource.id,
+                    parents=parents
+                ))
+
+    return Response(
+        json.dumps(result), status_code=200,
+        content_type=b'application/json')
+
+
 def collection_get(request):
     parent = request.params.get('parent')
     parent = int(parent) if parent else None
@@ -404,3 +448,7 @@ def setup_pyramid(comp, config):
     config.add_tween(
         'nextgisweb.resource.api.resexc_tween_factory',
         over='pyramid_tm.tm_tween_factory')
+
+    config.add_route(
+        'resource.item.search', '/api/resource/search') \
+        .add_view(item_search, request_method='GET')
