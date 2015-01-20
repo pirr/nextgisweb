@@ -129,37 +129,32 @@ def store(request):
 
 @viewargs(renderer='search.mako')
 def search(request):
-    # Подстрока поиска ресурсов
-    q = request.params.get('q')
-    q = q if q else None
-
     query = Resource.query()
 
+    # Подстрока поиска ресурсов
+    q = request.params.get('q', None)
     if q is not None:
         # Импорт не работает, если вынести из функции
         from ..resmeta.model import ResourceMetadataItem
 
-        l = []
-        res_search_fields = ('keyname', 'display_name', 'description')
-        resmeta_search_fields = ('key', 'vinteger', 'vfloat', 'vtext')
+        conds = list()
+        resource_search_flds = ('keyname', 'display_name', 'description')
+        resmeta_search_flds  = ('key', 'vinteger', 'vfloat', 'vtext')
 
         # Фильтрация по атрибутам ресурса
-        for k in res_search_fields:
-            l.append(db.sql.cast(getattr(Resource, k), db.Unicode).ilike('%' + q + '%'))
+        for fld in resource_search_flds:
+            conds.append(db.sql.cast(getattr(Resource, fld), db.Unicode).ilike('%' + q + '%'))
 
         # Фильтрация по атрибутам метаданных
-        for k in resmeta_search_fields:
-            l.append(db.sql.cast(getattr(ResourceMetadataItem, k), db.Unicode).ilike('%' + q + '%'))
+        for fld in resmeta_search_flds:
+            conds.append(db.sql.cast(getattr(ResourceMetadataItem, fld), db.Unicode).ilike('%' + q + '%'))
 
-        query = query.outerjoin(Resource.resmeta).filter(db.or_(*l))
+        query = query.outerjoin(Resource.resmeta).filter(db.or_(*conds))
 
-    result = []
-
-    for res in query:
-        if not res.has_permission(PERM_READ, request.user):
-            continue
-
-        result.append(res)
+    result = list()
+    for resource in query:
+        if resource.has_permission(PERM_READ, request.user):
+            result.append(resource)
 
     return dict(resources=result, title=u"Поиск ресурсов")
 
