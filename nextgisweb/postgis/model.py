@@ -449,12 +449,21 @@ class FeatureQueryBase(object):
 
         if self._like:
             l = []
-            for fld in self.layer.fields:
-                if fld.datatype == FIELD_TYPE.STRING:
-                    l.append(db.sql.cast(
-                        db.sql.column(fld.column_name),
-                        db.Unicode).ilike(
-                        '%' + self._like + '%'))
+
+            if isinstance(self._like, basestring):
+                for fld in self.layer.fields:
+                    if fld.datatype == FIELD_TYPE.STRING:
+                        l.append(db.sql.cast(
+                            db.sql.column(fld.column_name),
+                            db.Unicode).ilike(
+                            '%' + self._like + '%'))
+            elif isinstance(self._like, dict):
+                for fld in self.layer.fields:
+                    if fld.column_name in self._like and fld.datatype == FIELD_TYPE.STRING:
+                        l.append(db.sql.cast(
+                            db.sql.column(fld.column_name),
+                            db.Unicode).ilike(
+                            '%' + self._like.get(fld.column_name) + '%'))
 
             select.append_whereclause(db.or_(*l))
 
