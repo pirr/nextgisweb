@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 from types import MethodType
+from collections import OrderedDict
 
 import geojson
 from pyramid.response import Response
@@ -8,6 +9,7 @@ from pyramid.renderers import render_to_response
 
 from ..resource import (
     Resource,
+    ResourceScope,
     DataStructureScope,
     DataScope,
     resource_factory,
@@ -41,7 +43,10 @@ PD_WRITE = DataScope.write
 PDS_R = DataStructureScope.read
 PDS_W = DataStructureScope.write
 
+PR_R = ResourceScope.read
 
+
+@viewargs(renderer='nextgisweb:feature_layer/template/feature_browse.mako')
 def feature_browse(request):
     request.resource_permission(PD_READ)
     request.resource_permission(PDS_R)
@@ -49,70 +54,55 @@ def feature_browse(request):
                 maxwidth=True, maxheight=True)
 
 
+@viewargs(renderer='nextgisweb:feature_layer/template/show.mako')
 def feature_show(request):
     request.resource_permission(PD_READ)
 
-    fquery = request.context.feature_query()
-    fquery.filter_by(id=request.matchdict['feature_id'])
-    fquery.geom()
+    feature_id = int(request.matchdict['feature_id'])
 
-    feature = fquery().one()
+    ext_mid = OrderedDict()
+    for k, ecls in FeatureExtension.registry._dict.iteritems():
+        if hasattr(ecls, 'display_widget'):
+            ext_mid[k] = ecls.display_widget
+
+    fields = dict()
+    for f in request.context.fields:
+        fields[f.keyname] = OrderedDict((
+            ('datatype', f.datatype),
+        ))
 
     return dict(
         obj=request.context,
-        subtitle=u"Объект #%d" % feature.id,
-        feature=feature)
+        subtitle=u"Объект #%d" % feature_id,
+        feature_id=feature_id,
+        ext_mid=ext_mid,
+        fields=fields)
 
 
-def feature_edit(layer, request):
+@viewargs(renderer='nextgisweb:feature_layer/template/widget.mako')
+def feature_update(request):
     request.resource_permission(PD_WRITE)
 
-    query = layer.feature_query()
-    query.filter_by(id=request.matchdict['feature_id'])
-    feature = list(query())[0]
+    feature_id = int(request.matchdict['feature_id'])
 
-    swconfig = []
+    ext_mid = OrderedDict()
+    for k, ecls in FeatureExtension.registry._dict.iteritems():
+        if hasattr(ecls, 'editor_widget'):
+            ext_mid[k] = ecls.editor_widget
 
-    if hasattr(layer, 'feature_widget'):
-        swconfig.append(('feature_layer', layer.feature_widget()))
-
-    for k, v in FeatureExtension.registry._dict.iteritems():
-        swconfig.append((k, v(layer).feature_widget))
-
-    class Widget(CompositeWidget):
-        subwidget_config = swconfig
-
-    widget = Widget(obj=feature, operation='edit')
-    widget.bind(request=request)
-
-    if request.method == 'POST':
-        widget.bind(data=request.json_body)
-
-        if widget.validate():
-            widget.populate_obj()
-
-            return render_to_response(
-                'json', dict(
-                    status_code=200,
-                    redirect=request.url
-                ),
-                request
-            )
-
-        else:
-            return render_to_response(
-                'json', dict(
-                    status_code=400,
-                    error=widget.widget_error()
-                ),
-                request
-            )
+    fields = []
+    for f in request.context.fields:
+        fields.append(OrderedDict((
+            ('keyname', f.keyname),
+            ('datatype', f.datatype),
+        )))
 
     return dict(
-        widget=widget,
-        obj=layer,
-        subtitle=u"Объект: %s" % unicode(feature),
-    )
+        obj=request.context,
+        feature_id=feature_id,
+        ext_mid=ext_mid, fields=fields,
+        subtitle=u"Объект #%d" % feature_id,
+        maxheight=True)
 
 
 @viewargs(context=IFeatureLayer)
@@ -314,6 +304,14 @@ def setup_pyramid(comp, config):
                     for f in query()
                 ]
 
+                # Добавляем в результаты идентификации название
+                # родительского ресурса (можно использовать в случае,
+                # если на клиенте нет возможности извлечь имя слоя по
+                # идентификатору)
+                if layer.parent.has_permission(PR_R, request.user):
+                    for feature in features:
+                        feature['parent'] = layer.parent.display_name
+
                 result[layer.id] = dict(
                     features=features,
                     featureCount=len(features)
@@ -337,9 +335,21 @@ def setup_pyramid(comp, config):
         '/resource/{id:\d+}/feature/',
         factory=resource_factory,
         client=('id', )
-    ).add_view(
-        feature_browse, context=IFeatureLayer,
-        renderer='nextgisweb:feature_layer/template/feature_browse.mako')
+    ).add_view(feature_browse, context=IFeatureLayer)
+
+    config.add_route(
+        'feature_layer.feature.show',
+        '/resource/{id:\d+}/feature/{feature_id:\d+}',
+        factory=resource_factory,
+        client=('id', 'feature_id')
+    ).add_view(feature_show, context=IFeatureLayer)
+
+    config.add_route(
+        'feature_layer.feature.update',
+        '/resource/{id:\d+}/feature/{feature_id}/update',
+        factory=resource_factory,
+        client=('id', 'feature_id')
+    ).add_view(feature_update, context=IFeatureLayer)
 
     config.add_route(
         'feature_layer.field', '/resource/{id:\d+}/field/',
@@ -361,26 +371,6 @@ def setup_pyramid(comp, config):
     ).add_view(store_item, context=IFeatureLayer)
 
     config.add_route(
-        'feature_layer.feature.show',
-        '/resource/{id:\d+}/feature/{feature_id:\d+}',
-        factory=resource_factory,
-        client=('id', 'feature_id')
-    ).add_view(
-        feature_show,
-        context=IFeatureLayer,
-        renderer='nextgisweb:feature_layer/template/feature_show.mako')
-
-    config.add_route(
-        'feature_layer.feature.edit',
-        '/resource/{id:\d+}/feature/{feature_id}/edit',
-        factory=resource_factory,
-        client=('id', 'feature_id')
-    ).add_view(
-        feature_edit,
-        context=IFeatureLayer,
-        renderer='model_widget.mako')
-
-    config.add_route(
         'feature_layer.geojson',
         '/resource/{id:\d+}/geojson/',
         factory=resource_factory
@@ -388,14 +378,10 @@ def setup_pyramid(comp, config):
 
     def client_settings(self, request):
         return dict(
-            extensions=dict(
-                map(
-                    lambda ext: (ext.identity, dict(
-                        displayWidget=ext.display_widget
-                    )),
-                    FeatureExtension.registry
-                )
-            ),
+            extensions=dict(map(
+                lambda ext: (ext.identity, ext.display_widget),
+                FeatureExtension.registry
+            )),
             identify=dict(
                 attributes=self.settings['identify.attributes']
             ),

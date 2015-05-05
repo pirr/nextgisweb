@@ -29,7 +29,7 @@ def pkginfo():
         'layer',
         'feature_layer',
         'feature_description',
-        'feature_photo',
+        'feature_attachment',
         'style',
         'marker_library',
         'webmap',
@@ -84,16 +84,15 @@ def amd_packages():
         # Пакеты nextgisweb
         ('ngw', 'nextgisweb:amd_packages/ngw'),
         ('feature_layer', 'nextgisweb:amd_packages/feature_layer'),
-        ('feature_description', 'nextgisweb:amd_packages/feature_description'),
-        ('feature_photo', 'nextgisweb:amd_packages/feature_photo'),
         ('webmap', 'nextgisweb:amd_packages/webmap'),
-        ('vector_layer', 'nextgisweb:amd_packages/vector_layer'),
         ('wmsclient', 'nextgisweb:amd_packages/wmsclient'),
 
         # Пакеты компонентов
         ('ngw-resource', 'nextgisweb:resource/amd/ngw-resource'),
         ('ngw-resmeta', 'nextgisweb:resmeta/amd/ngw-resmeta'),
-        ('ngw-feature-layer', 'nextgisweb:feature_layer/amd/ngw-feature-layer'),
+        ('ngw-feature-layer', 'nextgisweb:feature_layer/amd'),
+        ('ngw-feature-description', 'nextgisweb:feature_description/amd'),
+        ('ngw-feature-attachment', 'nextgisweb:feature_attachment/amd'),
         ('ngw-postgis', 'nextgisweb:postgis/amd/ngw-postgis'),
         ('ngw-wmsclient', 'nextgisweb:wmsclient/amd/ngw-wmsclient'),
         ('ngw-wmsserver', 'nextgisweb:wmsserver/amd/ngw-wmsserver'),

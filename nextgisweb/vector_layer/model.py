@@ -8,7 +8,9 @@ import tempfile
 import shutil
 import ctypes
 import operator
+from datetime import datetime
 from distutils.version import LooseVersion
+
 
 from zope.interface import implements
 import osgeo
@@ -55,7 +57,13 @@ GEOM_TYPE_OGR = (
     ogr.wkbPolygon,
     ogr.wkbMultiPoint,
     ogr.wkbMultiLineString,
-    ogr.wkbMultiPolygon)
+    ogr.wkbMultiPolygon,
+    ogr.wkbPoint25D,
+    ogr.wkbLineString25D,
+    ogr.wkbPolygon25D,
+    ogr.wkbMultiPoint25D,
+    ogr.wkbMultiLineString25D,
+    ogr.wkbMultiPolygon25D)
 GEOM_TYPE_DISPLAY = (u"Точка", u"Линия", u"Полигон")
 
 FIELD_TYPE_DB = (
@@ -74,7 +82,7 @@ FIELD_TYPE_OGR = (
     ogr.OFTTime,
     ogr.OFTDateTime)
 
-_GEOM_OGR_2_TYPE = dict(zip(GEOM_TYPE_OGR, GEOM_TYPE.enum * 2))
+_GEOM_OGR_2_TYPE = dict(zip(GEOM_TYPE_OGR, GEOM_TYPE.enum * 4))
 _GEOM_TYPE_2_DB = dict(zip(GEOM_TYPE.enum, GEOM_TYPE_DB))
 _GEOM_TYPE_2_GA = dict(zip(GEOM_TYPE_DB, GEOM_TYPE_GA))
 
@@ -194,6 +202,17 @@ class TableInfo(object):
             fid += 1
             geom = feature.GetGeometryRef()
 
+            # Приведение 25D геометрий к 2D
+            if geom.GetGeometryType() in (
+                ogr.wkbPoint25D,
+                ogr.wkbLineString25D,
+                ogr.wkbPolygon25D,
+                ogr.wkbMultiPoint25D,
+                ogr.wkbMultiLineString25D,
+                ogr.wkbMultiPolygon25D,
+                ):
+                geom.FlattenTo2D()
+
             if geom.GetGeometryType() == ogr.wkbPoint:
                 geom = ogr.ForceToMultiPoint(geom)
             elif geom.GetGeometryType() == ogr.wkbLineString:
@@ -207,10 +226,13 @@ class TableInfo(object):
             for i in range(feature.GetFieldCount()):
                 fld_type = feature.GetFieldDefnRef(i).GetType()
                 fld_value = None
+
                 if fld_type == ogr.OFTInteger:
                     fld_value = feature.GetFieldAsInteger(i)
                 elif fld_type == ogr.OFTReal:
                     fld_value = feature.GetFieldAsDouble(i)
+                elif fld_type in [ogr.OFTDate, ogr.OFTTime, ogr.OFTDateTime]:
+                    fld_value = datetime(*feature.GetFieldAsDateTime(i))
                 elif fld_type == ogr.OFTString:
                     try:
                         fld_value = strdecode(feature.GetFieldAsString(i))
