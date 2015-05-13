@@ -65,18 +65,11 @@ def feature_show(request):
         if hasattr(ecls, 'display_widget'):
             ext_mid[k] = ecls.display_widget
 
-    fields = dict()
-    for f in request.context.fields:
-        fields[f.keyname] = OrderedDict((
-            ('datatype', f.datatype),
-        ))
-
     return dict(
         obj=request.context,
         subtitle=u"Объект #%d" % feature_id,
         feature_id=feature_id,
-        ext_mid=ext_mid,
-        fields=fields)
+        ext_mid=ext_mid)
 
 
 @viewargs(renderer='nextgisweb:feature_layer/template/widget.mako')
@@ -94,6 +87,7 @@ def feature_update(request):
     for f in request.context.fields:
         fields.append(OrderedDict((
             ('keyname', f.keyname),
+            ('display_name', f.display_name),
             ('datatype', f.datatype),
         )))
 

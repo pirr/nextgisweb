@@ -33,10 +33,14 @@ define([
     return declare([DisplayWidget], {
         title: "Прикрепленные файлы",
 
+        constructor: function (args) {
+            if (args.compact === true) { this.title = "Файлы"; }
+        },
+
         buildRendering: function () {
             this.inherited(arguments);
 
-            domClass.add(this.domNode, "ngw-feature-attachment-display-widget");
+            domClass.add(this.domNode, "ngw-feature-attachment-DisplayWidget");
 
             this.lbox = new dojox.image.LightboxDialog({});
         },
