@@ -6,7 +6,13 @@ from ..resource import IResourceBase
 
 class IRenderableStyle(IResourceBase):
 
-    def render_request(self, srs):
+    def render_request(self, srs, cond=None):
+        pass
+
+
+class ILegendableStyle(IResourceBase):
+
+    def render_legend(self):
         pass
 
 

@@ -2,20 +2,24 @@
 from ...FeatureServer.Service.Action import Action
 from ...FeatureServer.WebFeatureService.WFSRequest import WFSRequest
 from ...web_request.handlers import ApplicationException
-from ...FeatureServer.Exceptions.LayerNotFoundException import LayerNotFoundException
+from ...FeatureServer.Exceptions.LayerNotFoundException import \
+    LayerNotFoundException
 from ...FeatureServer.Exceptions.NoLayerException import NoLayerException
+from ...FeatureServer.Exceptions.InvalidValueWFSException import \
+    InvalidValueWFSException
+
 
 class Request (object):
-    
+
     query_action_types = []
-    
-    def __init__ (self, service):
-        self.service     = service
-        #self.datasource  = None
+
+    def __init__(self, service):
+        self.service = service
+        # self.datasource  = None
         self.datasources = []
-        self.actions     = []
-        self.host        = None
-    
+        self.actions = []
+        self.host = None
+
     def encode_metadata(self, action):
         """Accepts an action, which is of method 'metadata' and
             may have one attribute, 'metadata', which includes
@@ -31,7 +35,7 @@ class Request (object):
                 data.append(" * %s, %s/%s" % (layer, self.host, layer))
         return ("text/plain", "\n".join(data))
 
-    def parse(self, params, path_info, host, post_data, request_method, format_obj = None):
+    def parse(self, params, path_info, host, post_data, request_method, format_obj=None):
         """Used by most of the subclasses without changes. Does general
             processing of request information using request method and
             path/parameter information, to build up a list of actions.
@@ -43,9 +47,9 @@ class Request (object):
 
         try:
             self.get_layer(path_info, params)
-        except NoLayerException as e:
+        except NoLayerException:
             a = Action()
-            
+
             if params.has_key('service') and params['service'].lower() == 'wfs':
                 for layer in self.service.datasources:
                     self.datasources.append(layer)
@@ -55,26 +59,31 @@ class Request (object):
                     a.request = "GetCapabilities"
             else:
                 a.method = "metadata"
-            
+
             self.actions.append(a)
             return
 
         for datasource in self.datasources:
             if not self.service.datasources.has_key(datasource):
-                raise LayerNotFoundException("Request", datasource, self.service.datasources.keys())
+                raise LayerNotFoundException(
+                    "Request", datasource, self.service.datasources.keys())
 
         action = Action()
 
         if request_method == "GET" or (request_method == "OPTIONS" and (post_data is None or len(post_data) <= 0)):
             action = self.get_select_action(path_info, params)
             if u'typename' in params:
-                action.layer = params[u'typename']
+                action.layer = params[u'typename']      # WFS 1.0.0
+            if u'typenames' in params:
+                action.layer = params[u'typenames']     # WFS 2.0.0
 
         elif request_method == "POST" or request_method == "PUT" or (request_method == "OPTIONS" and len(post_data) > 0):
-            actions = self.handle_post(params, path_info, host, post_data, request_method, format_obj = format_obj)
+            actions = self.handle_post(
+                params, path_info, host, post_data, request_method,
+                format_obj=format_obj)
             for action in actions:
                 self.actions.append(action)
-            
+
             return
 
         elif request_method == "DELETE":
@@ -98,6 +107,64 @@ class Request (object):
             return False
         return False
 
+    def _set_bbox(self, action, bbox_value):
+        """Analyze bbox parameter, set bbox attribute of the action
+        """
+        try:
+            action.bbox = map(float, bbox_value.split(","))
+        except ValueError:
+            raise InvalidValueWFSException(
+                message="Bbox values are't numeric: '%s'"
+                % (bbox_value, )
+            )
+        try:
+            minX, minY, maxX, maxY = action.bbox
+        except ValueError:
+            raise InvalidValueWFSException(
+                message="Bbox values must be in format: minX,minY,maxX,maxY"
+            )
+        if minX > maxX or (minY > maxY):
+            raise InvalidValueWFSException(
+                message="Bbox values must be: minX<maxX,minY<maxY"
+            )
+        return action
+
+    def _set_maxfeatures(self, action, maxfeatures_value):
+        """Analyze maxfeatures parameter, set maxfeatures
+        attribute of the action
+        """
+        try:
+            action.maxfeatures = int(maxfeatures_value)
+        except ValueError:
+            raise InvalidValueWFSException(
+                message="Maxfeatures value isn't integer: '%s'"
+                % (maxfeatures_value, )
+            )
+        return action
+
+    def _set_startfeature(self, action, startfeature_value):
+        """Analyze startfeature parameter, set startfeature
+        attribute of the action
+        """
+        try:
+            action.startfeature = int(startfeature_value)
+        except ValueError:
+            raise InvalidValueWFSException(
+                message="Startfeature value isn't integer: '%s'"
+                % (startfeature_value, )
+            )
+        return action
+
+    def _set_filter(self, action, filter_value):
+        """Analyze filters
+        """
+        action.wfsrequest = WFSRequest()
+        try:
+            action.wfsrequest.parse(filter_value)
+        except Exception:
+            ''' '''
+        return action
+
     def get_select_action(self, path_info, params):
         """Generate a select action from a URL. Used unmodified by most
             subclasses. Handles attribute query by following the rules passed in
@@ -105,17 +172,17 @@ class Request (object):
             looking for the parameters in the params. """
         action = Action()
         action.method = "select"
-        
+
         id = self.get_id_from_path_info(path_info)
-        
+
         if id is not False:
             action.id = id
-        
         else:
-            import sys
+            # import sys
             for ds in self.datasources:
+                # import ipdb; ipdb.set_trace()
                 queryable = []
-                #ds = self.service.datasources[self.datasource]
+                # ds = self.service.datasources[self.datasource]
                 if hasattr(ds, 'queryable'):
                     queryable = ds.queryable.split(",")
                 elif params.has_key("queryable"):
@@ -124,42 +191,49 @@ class Request (object):
                     qtype = None
                     if "__" in key:
                         key, qtype = key.split("__")
+                    if key == 'layer':
+                        action.layer = value
                     if key == 'bbox':
-                        action.bbox = map(float, value.split(","))
-                    elif key == "maxfeatures":
-                        action.maxfeatures = int(value)
-                    elif key == "startfeature":
-                        action.startfeature = int(value)
+                        action = self._set_bbox(action, value)
+                    elif key in ["maxfeatures",     # WFS 1.0.0
+                                 "count"            # WFS 2.0.0
+                                 ]:
+                        action = self._set_maxfeatures(action, value)
+                    elif key in ["startfeature",    # WFS 1.0.0
+                                 "startindex"       # WFS 2.0.0
+                                 ]:
+                        action = self._set_startfeature(action, value)
                     elif key == "request":
                         action.request = value
                     elif key == "version":
                         action.version = value
                     elif key == "filter":
-                        action.wfsrequest = WFSRequest()
-                        try:
-                            action.wfsrequest.parse(value)
-                        except Exception, E:
-                            ''' '''
-
+                        action = self._set_filter(action, value)
                     elif key in queryable or key.upper() in queryable and hasattr(self.service.datasources[ds], 'query_action_types'):
                         if qtype:
                             if qtype in self.service.datasources[ds].query_action_types:
-                                action.attributes[key+'__'+qtype] = {'column': key, 'type': qtype, 'value':value}
+                                action.attributes[key + '__' + qtype] = {
+                                    'column': key, 'type': qtype, 'value': value}
                             else:
-                                raise ApplicationException("%s, %s, %s\nYou can't use %s on this layer. Available query action types are: \n%s" % (self, self.query_action_types, qtype,
-                                                                                                                                                   qtype, ",".join(self.service.datasources[ds].query_action_types) or "None"))
+                                raise ApplicationException(
+                                    "%s, %s, %s\nYou can't use %s on this layer. Available query action types are: \n%s" % (self, self.query_action_types, qtype,
+                                                                                                                            qtype, ",".join(self.service.datasources[ds].query_action_types) or "None"))
                         else:
-                            action.attributes[key+'__eq'] = {'column': key, 'type': 'eq', 'value':value}
-                            #action.attributes[key] = value
-        
+                            action.attributes[key + '__eq'] = {
+                                'column': key, 'type': 'eq', 'value': value}
+                            # action.attributes[key] = value
         return action
-    
-    def get_layer(self, path_info, params = {}):
+
+    def get_layer(self, path_info, params={}):
         """Return layer based on path, or raise a NoLayerException."""
-        if params.has_key("typename"):
+        if params.has_key("typename"):      # WFS 1.0.0
             self.datasources = params["typename"].split(",")
             return
-        
+
+        if params.has_key("typenames"):     # WFS 2.0.0
+            self.datasources = params["typenames"].split(",")
+            return
+
         path = path_info.split("/")
         if len(path) > 1 and path_info != '/':
             # get_layer method can be called twice, so to prevent
@@ -172,49 +246,63 @@ class Request (object):
             #    duplication of datasources, check it (DK)
             if params['layer'] not in self.datasources:
                 self.datasources.append(params['layer'])
-        
-        if len(self.datasources) == 0:
-            raise NoLayerException("Request", message="Could not obtain data source from layer parameter or path info.")
 
-    def handle_post(self, params, path_info, host, post_data, request_method, format_obj = None):
-        """Read data from the request and turn it into an UPDATE/DELETE action."""
+        if len(self.datasources) == 0:
+            raise NoLayerException(
+                "Request", message="Could not obtain data source from layer parameter or path info.")
+
+    def handle_post(self, params, path_info, host, post_data,
+                    request_method, format_obj=None):
+        """Read data from the request and turn it into actions."""
 
         if format_obj:
             actions = []
-            
+
             id = self.get_id_from_path_info(path_info)
             if id is not False:
                 action = Action()
                 action.method = "update"
                 action.id = id
-                
+
                 features = format_obj.decode(post_data)
-                
+
                 action.feature = features[0]
                 actions.append(action)
-            
+
             else:
                 if hasattr(format_obj, 'decode'):
                     features = format_obj.decode(post_data)
-                    
+
                     for feature in features:
                         action = Action()
                         action.method = "insert"
                         action.feature = feature
                         actions.append(action)
-            
+
                 elif hasattr(format_obj, 'parse'):
+                    # import ipdb; ipdb.set_trace()
                     format_obj.parse(post_data)
-                    
+
+                    if format_obj.isGetCapabilities():
+                        return format_obj.getCapabilitiesAction()
+                    elif format_obj.isDescribeFeatureType():
+                        return format_obj.describeFeatureTypeAction()
+                    elif format_obj.isGetFeature():
+                        getFeatParams = format_obj.getFeatureParams()
+                        return [self.get_select_action(path_info,
+                                                       getFeatParams)]
+
+                    # It is a transaction request.
                     transactions = format_obj.getActions()
                     if transactions is not None:
                         for transaction in transactions:
                             action = Action()
-                            action.method = transaction.__class__.__name__.lower()
+                            action.method = \
+                                transaction.__class__.__name__.lower()
                             action.layer = transaction.getLayerName()
                             action.wfsrequest = transaction
                             actions.append(action)
-            
+
             return actions
         else:
             raise Exception("Service type does not support adding features.")
@@ -222,18 +310,18 @@ class Request (object):
     def encode(self, result):
         """Accepts a list of lists of features. Each list is generated by one datasource
             method call. Must return a (content-type, string) tuple."""
-        results = ["Service type doesn't support displaying data, using naive display."""]
+        results = [
+            "Service type doesn't support displaying data, using naive display."""]
         for action in result:
             for i in action:
                 data = i.to_dict()
-                for key,value in data['properties'].items():
+                for key, value in data['properties'].items():
                     if value and isinstance(value, str):
-                        data['properties'][key] = unicode(value,"utf-8")
+                        data['properties'][key] = unicode(value, "utf-8")
                 results.append(" * %s" % data)
-        
+
         return ("text/plain", "\n".join(results), None)
-    
+
     def getcapabilities(self, version): pass
+
     def describefeaturetype(self, version): pass
-
-

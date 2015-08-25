@@ -2,13 +2,12 @@ from subprocess import check_output, CalledProcessError
 from setuptools import setup, find_packages
 
 try:
-    gdalver = '==' + check_output(['gdal-config', '--version']).strip()
-
+    gv = check_output(['gdal-config', '--version']).strip()
 except CalledProcessError:
-    gdalver = ''
+    gv = None
 
 requires = [
-    'pyramid',
+    'pyramid>=1.5',
     'SQLAlchemy>=0.8,<0.9',
     'transaction',
     'pyramid_tm',
@@ -19,8 +18,7 @@ requires = [
     'bunch',
     'flufl.enum',
     'waitress',
-
-    'pygdal' + gdalver,
+    'pygdal' + (('>=' + gv + '.0,<=' + gv + '.9999') if gv else ''),
     'psycopg2',
     'geoalchemy',
     'shapely',
@@ -30,6 +28,7 @@ requires = [
     'passlib',
     'owslib',
     'requests',
+    'babel',
 ]
 
 entry_points = {
@@ -37,9 +36,14 @@ entry_points = {
         'main = nextgisweb:main'
     ],
 
+    'babel.extractors': [
+        'hbs = nextgisweb.i18n.hbs:extract',
+    ],
+
     'console_scripts': [
         'nextgisweb = nextgisweb.script:main',
         'nextgisweb-config = nextgisweb.script:config',
+        'nextgisweb-i18n = nextgisweb.i18n:main',
     ],
 
     'nextgisweb.packages': ['nextgisweb = nextgisweb:pkginfo', ],
@@ -60,9 +64,9 @@ setup(
         "Topic :: Internet :: WWW/HTTP",
         "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
     ],
-    author='',
-    author_email='',
-    url='',
+    author='NextGIS',
+    author_email='info@nextgis.ru',
+    url='http://nextgis.ru/nextgis-web/',
     keywords='web wsgi bfg pylons pyramid',
     packages=find_packages(),
     include_package_data=True,

@@ -1,18 +1,12 @@
 .. sectionauthor:: Дмитрий Барышников <dmitry.baryshnikov@nextgis.ru>
-.. NextGIS Web develop TOC
+.. NextGIS Web common TOC
 
 NextGIS Web
 ===========
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
-   component
-   auth
-   resource
-   create
-   file_upload
-   change
-   misc
-   error_report
+   ./developer/toc
+   ./internal/toc
    

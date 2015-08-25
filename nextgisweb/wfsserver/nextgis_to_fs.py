@@ -10,8 +10,9 @@ import shapely
 
 import geojson
 
-from nextgisweb.feature_layer import Feature as NgwFwature
+from nextgisweb.feature_layer import Feature as NgwFeature
 from nextgisweb.feature_layer import IWritableFeatureLayer, GEOM_TYPE, FIELD_TYPE
+from nextgisweb.geometry import box
 
 from .third_party.FeatureServer.DataSource import DataSource
 from .third_party.vectorformats.Feature import Feature
@@ -22,6 +23,7 @@ from .third_party.FeatureServer.WebFeatureService.Response.DeleteResult import D
 
 
 class NextgiswebDatasource(DataSource):
+
     '''Class to convert nextgislayer to featureserver datasource
     '''
 
@@ -36,6 +38,8 @@ class NextgiswebDatasource(DataSource):
             self.attribute_cols = kwargs['attribute_cols'].split(',')
         else:
             self.attribute_cols = None      # Назначим потом (чтобы не производить лишних запросов к БД на этом этапе)
+
+        self.maxfeatures = 1000   # Default count of returned features
 
     @property
     def srid_out(self):
@@ -57,7 +61,8 @@ class NextgiswebDatasource(DataSource):
     @property
     def geom_col(self):
 
-        # Setup geometry column name. But some resources do not provide the name
+        # Setup geometry column name. But some resources do not provide the
+        # name
         try:
             geom_col = self.layer.column_geom
         except AttributeError:
@@ -85,11 +90,28 @@ class NextgiswebDatasource(DataSource):
         return self.attribute_cols
 
     # FeatureServer.DataSource
-    def select (self, params):
+    def select(self, params):
         if self.query is None:
             self._setup_query()
 
+        # import ipdb; ipdb.set_trace()
         self.query.filter_by()
+
+        # Startfeature+maxfeature
+        if params.startfeature is None:
+            params.startfeature = 0
+        if params.maxfeatures:
+            maxfeatures = params.maxfeatures
+        else:
+            maxfeatures = self.maxfeatures
+
+        self.query.limit(maxfeatures, params.startfeature)
+
+        # BBOX
+        if params.bbox:
+            geom = box(*params.bbox, srid=self.srid_out)
+            self.query.intersects(geom)
+
         self.query.geom()
         result = self.query()
 
@@ -105,14 +127,14 @@ class NextgiswebDatasource(DataSource):
 
         return features
 
-    def update (self, action):
+    def update(self, action):
         """ В action.wfsrequest хранится объект Transaction.Update
         нужно его распарсить и выполнить нужные действия
         """
         if not self.writable:
             return None
 
-        if action.wfsrequest != None:
+        if action.wfsrequest is not None:
             if self.query is None:
                 self._setup_query()
 
@@ -142,14 +164,15 @@ class NextgiswebDatasource(DataSource):
 
         return None
 
-    def insert (self, action):
+    def insert(self, action):
         """ В action.wfsrequest хранится объект Transaction.Insert
         нужно его распарсить и выполнить нужные действия
         """
         if not self.writable:
             return None
 
-        if action.wfsrequest != None:
+        # import ipdb; ipdb.set_trace()
+        if action.wfsrequest is not None:
             data = action.wfsrequest.getStatement(self)
 
             feature_dict = geojson.loads(data)
@@ -161,7 +184,7 @@ class NextgiswebDatasource(DataSource):
             # Поле геометрии в словаре аттрибутов теперь не нужно:
             feature_dict.pop(self.geom_col)
 
-            feature = NgwFwature(fields=feature_dict, geom=geom)
+            feature = NgwFeature(fields=feature_dict, geom=geom)
 
             feature_id = self.layer.feature_create(feature)
 
@@ -170,12 +193,11 @@ class NextgiswebDatasource(DataSource):
 
         return None
 
-
     def delete(self, action, response=None):
         """ В action.wfsrequest хранится объект Transaction.Delete
         нужно его распарсить и выполнить нужные действия
         """
-        if action.wfsrequest != None:
+        if action.wfsrequest is not None:
             data = action.wfsrequest.getStatement(self)
             for id in geojson.loads(data):
                 self.layer.feature_delete(id)
@@ -189,7 +211,7 @@ class NextgiswebDatasource(DataSource):
         try:
             field = self.layer.field_by_keyname(attribute)
             field_type = field.datatype
-        except KeyError: # the attribute can be=='*', that causes KeyError
+        except KeyError:  # the attribute can be=='*', that causes KeyError
             field_type = FIELD_TYPE.STRING
 
         if field_type == FIELD_TYPE.INTEGER:
@@ -206,10 +228,7 @@ class NextgiswebDatasource(DataSource):
         Наверное есть способ лучше, но я не нашел.
         Кто знает -- правьте
         """
-        gml = str(gml)      # CreateGeometryFromGML не умеет работать с уникодом
+        gml = str(gml)
+        # CreateGeometryFromGML не умеет работать с уникодом
         ogr_geo = ogr.CreateGeometryFromGML(gml)
         return shapely.wkt.loads(ogr_geo.ExportToWkt())
-
-
-
-
