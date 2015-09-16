@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals, print_function, absolute_import
 from ..registry import registry_maker
+from .util import _
 
 
 class WebMapAdapter(object):
@@ -18,8 +20,8 @@ class TileAdapter(object):
     однако сам сервис реализуется другим компонентом. """
 
     identity = 'tile'
-    mid = 'webmap/TMSAdapter'
-    display_name = u"Тайлы"
+    mid = 'ngw-webmap/TMSAdapter'
+    display_name = _("Tiles")
 
 
 @WebMapAdapter.registry.register
@@ -28,5 +30,5 @@ class ImageAdapter(object):
     WMS-запросу GetImage, однако сам сервис реализуется другим компонентом. """
 
     identity = 'image'
-    mid = 'webmap/ImageAdapter'
-    display_name = u"Изображение"
+    mid = 'ngw-webmap/ImageAdapter'
+    display_name = _("Image")

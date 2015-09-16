@@ -51,6 +51,8 @@ from ..feature_layer import (
     IFeatureQueryLike,
     IFeatureQueryIntersects)
 
+from .util import _
+
 GEOM_TYPE_GA = (ga.MultiPoint, ga.MultiLineString, ga.MultiPolygon)
 GEOM_TYPE_DB = ('MULTIPOINT', 'MULTILINESTRING', 'MULTIPOLYGON')
 GEOM_TYPE_OGR = (
@@ -66,7 +68,7 @@ GEOM_TYPE_OGR = (
     ogr.wkbMultiPoint25D,
     ogr.wkbMultiLineString25D,
     ogr.wkbMultiPolygon25D)
-GEOM_TYPE_DISPLAY = (u"Точка", u"Линия", u"Полигон")
+GEOM_TYPE_DISPLAY = (_("Point"), _("Line"), _("Polygon"))
 
 FIELD_TYPE_DB = (
     db.Integer,
@@ -212,7 +214,7 @@ class TableInfo(object):
                 ogr.wkbMultiPoint25D,
                 ogr.wkbMultiLineString25D,
                 ogr.wkbMultiPolygon25D,
-                ):
+            ):
                 geom.FlattenTo2D()
 
             if geom.GetGeometryType() == ogr.wkbPoint:
@@ -239,7 +241,8 @@ class TableInfo(object):
                     try:
                         fld_value = strdecode(feature.GetFieldAsString(i))
                     except UnicodeDecodeError:
-                        raise ValidationError("Не удалось декодировать строковое значение атрибута: объект номер %d, атрибут номер %d." % (fid, i))  # NOQA
+                        raise ValidationError(_("Unable to decode string value of feature #%(feat)d attribute #%(attr)d.") % dict(
+                            feat=fid, attr=i))  # NOQA
 
                 fld_values[self[feature.GetFieldDefnRef(i).GetNameRef()].key] \
                     = fld_value
@@ -264,7 +267,7 @@ class VectorLayerField(Base, LayerField):
 
 class VectorLayer(Base, Resource, SpatialLayerMixin, LayerFieldsMixin):
     identity = 'vector_layer'
-    cls_display_name = u"Векторный слой"
+    cls_display_name = _("Vector layer")
 
     __scope__ = DataScope
 
@@ -297,7 +300,7 @@ class VectorLayer(Base, Resource, SpatialLayerMixin, LayerFieldsMixin):
 
     def get_info(self):
         return super(VectorLayer, self).get_info() + (
-            (u"Тип геометрии", dict(zip(GEOM_TYPE.enum, GEOM_TYPE_DISPLAY))[
+            (_("Geometry type"), dict(zip(GEOM_TYPE.enum, GEOM_TYPE_DISPLAY))[
                 self.geometry_type]),
         )
 
@@ -448,7 +451,6 @@ def _set_encoding(encoding):
 
             def strdecode(x):
                 if len(x) >= 254:
-
                     # Костылек для косячка с обрезкой по 254 - 255 байтам
                     # юникодных строк. До тех пор пока не получится
                     # декодировать строку откусываем по байту справа.
@@ -495,29 +497,27 @@ VE = ValidationError
 class _source_attr(SP):
 
     def _ogrds(self, ogrds):
-
         if ogrds.GetLayerCount() < 1:
-            raise VE("Набор данных не содержит слоёв.")
+            raise VE(_("Dataset doesn't contains layers."))
 
         if ogrds.GetLayerCount() > 1:
-            raise VE("Набор данных содержит более одного слоя.")
+            raise VE(_("Dataset contains more than one layer."))
 
         ogrlayer = ogrds.GetLayer(0)
         if ogrlayer is None:
-            raise VE("Не удалось открыть слой.")
+            raise VE(_("Unable to open layer."))
 
         return ogrlayer
 
     def _ogrlayer(self, obj, ogrlayer, recode=lambda (a): a):
-
         if ogrlayer.GetSpatialRef() is None:
-            raise VE("Не указана система координат слоя.")
+            raise VE(_("Layer doesn't contain coordinate system information."))
 
         feat = ogrlayer.GetNextFeature()
         while feat:
             geom = feat.GetGeometryRef()
             if geom is None:
-                raise VE("Объект %d не содержит геометрии." % feat.GetFID())
+                raise VE(_("Feature #%d doesn't contains geometry.") % feat.GetFID())
             feat = ogrlayer.GetNextFeature()
 
         ogrlayer.ResetReading()
@@ -529,7 +529,7 @@ class _source_attr(SP):
             obj.load_from_ogr(ogrlayer, recode)
 
     def setter(self, srlzr, value):
-        datafile, _ = env.file_upload.get_filename(value['id'])
+        datafile, metafile = env.file_upload.get_filename(value['id'])
         encoding = value.get('encoding', 'utf-8')
 
         iszip = zipfile.is_zipfile(datafile)
@@ -546,14 +546,19 @@ class _source_attr(SP):
                 recode = sdecode
 
             if ogrds is None:
-                raise VE("Библиотеке OGR не удалось открыть файл")
+                raise VE(_("GDAL library failed to open file."))
 
             drivername = ogrds.GetDriver().GetName()
 
-            if drivername not in ('ESRI Shapefile', ):
-                raise VE("Неподдерживаемый драйвер OGR: %s" % drivername)
+            if drivername not in ('ESRI Shapefile', 'GeoJSON'):
+                raise VE(_("Unsupport OGR driver: %s.") % drivername)
 
             ogrlayer = self._ogrds(ogrds)
+            geomtype = ogrlayer.GetGeomType()
+            if geomtype not in _GEOM_OGR_2_TYPE:
+                raise VE(_("Unsupported geometry type: '%s'.") % (
+                    ogr.GeometryTypeToName(geomtype) if geomtype else None))
+
             self._ogrlayer(srlzr.obj, ogrlayer, recode)
 
         finally:
@@ -565,14 +570,13 @@ class _geometry_type_attr(SP):
 
     def setter(self, srlzr, value):
         if value not in GEOM_TYPE.enum:
-            raise ValidationError("Недопустимый тип геометрии.")
+            raise ValidationError(_("Unsupported geometry type."))
 
         if srlzr.obj.id is None:
             srlzr.obj.geometry_type = value
 
         elif srlzr.obj.geometry_type != value:
-            raise ResourceError(
-                "Невозможно изменить тип геометрии существующего ресурса.")
+            raise ResourceError(_("Geometry type for existing resource can not be changed."))
 
 
 P_DS_READ = DataScope.read
@@ -603,6 +607,8 @@ class FeatureQueryBase(object):
         self._single_part_geom = None
         self._box = None
 
+        self._geom_len = None
+
         self._fields = None
         self._limit = None
         self._offset = None
@@ -618,6 +624,9 @@ class FeatureQueryBase(object):
     def geom(self, single_part=False):
         self._geom = True
         self._single_part = single_part
+
+    def geom_length(self):
+        self._geom_len = True
 
     def box(self):
         self._box = True
@@ -672,6 +681,9 @@ class FeatureQueryBase(object):
             else:
                 columns.append(db.func.st_asbinary(geomexpr).label('geom'))
 
+        if self._geom_len:
+            columns.append(db.func.st_length(db.func.geography(db.func.st_transform(geomexpr, 4326))).label('geom_len'))
+
         if self._box:
             columns.extend((
                 db.func.st_xmin(geomexpr).label('box_left'),
@@ -725,6 +737,7 @@ class FeatureQueryBase(object):
             layer = self.layer
 
             _geom = self._geom
+            _geom_len = self._geom_len
             _box = self._box
             _limit = self._limit
             _offset = self._offset
@@ -746,9 +759,14 @@ class FeatureQueryBase(object):
                     else:
                         geom = None
 
+                    calculated = dict()
+                    if self._geom_len:
+                        calculated['geom_len'] = row['geom_len']
+
                     yield Feature(
                         layer=self.layer, id=row.id,
                         fields=fdict, geom=geom,
+                        calculations=calculated,
                         box=box(
                             row.box_left, row.box_bottom,
                             row.box_right, row.box_top

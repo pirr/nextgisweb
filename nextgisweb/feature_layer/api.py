@@ -144,7 +144,8 @@ def iput(resource, request):
         feature = f
 
     deserialize(feature, request.json_body)
-    resource.feature_put(feature)
+    if IWritableFeatureLayer.providedBy(resource):
+        resource.feature_put(feature)
 
     return Response(
         json.dumps(dict(id=feature.id)),
@@ -185,21 +186,33 @@ def cpost(resource, request):
         content_type=b'application/json')
 
 
-def setup_pyramid(comp, config):
+def count(resource, request):
+    request.resource_permission(PERM_READ)
 
-    # TODO: В add_view так же нужно проверять наличие интерфейсов
-    # IFeatureLayer и IWritableFeatureLayer, но похоже одновременное указание
-    # request_method и context сейчас в pyramid не работает.
+    query = resource.feature_query()
+    total_count = query().total_count
+
+    return Response(
+        json.dumps(dict(total_count=total_count)),
+        content_type=b'application/json')
+
+
+def setup_pyramid(comp, config):
 
     config.add_route(
         'feature_layer.feature.item', '/api/resource/{id}/feature/{fid}',
-        factory=resource_factory, client=('id', 'fid')) \
-        .add_view(iget, request_method='GET') \
-        .add_view(iput, request_method='PUT') \
-        .add_view(idelete, request_method='DELETE')
+        factory=resource_factory) \
+        .add_view(iget, context=IFeatureLayer, request_method='GET') \
+        .add_view(iput, context=IFeatureLayer, request_method='PUT') \
+        .add_view(idelete, context=IWritableFeatureLayer, request_method='DELETE')
 
     config.add_route(
         'feature_layer.feature.collection', '/api/resource/{id}/feature/',
-        factory=resource_factory, client=('id', )) \
-        .add_view(cget, request_method='GET') \
-        .add_view(cpost, request_method='POST')
+        factory=resource_factory) \
+        .add_view(cget, context=IFeatureLayer, request_method='GET') \
+        .add_view(cpost, context=IWritableFeatureLayer, request_method='POST')
+
+    config.add_route(
+        'feature_layer.feature.count', '/api/resource/{id}/feature_count',
+        factory=resource_factory) \
+        .add_view(count, context=IFeatureLayer, request_method='GET')

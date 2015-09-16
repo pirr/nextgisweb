@@ -5,7 +5,6 @@ from collections import OrderedDict
 
 import geojson
 from pyramid.response import Response
-from pyramid.renderers import render_to_response
 
 from ..resource import (
     Resource,
@@ -16,11 +15,12 @@ from ..resource import (
     Widget)
 from ..geometry import geom_from_wkt
 from ..object_widget import ObjectWidget, CompositeWidget
-from ..pyramidcomp import viewargs
+from ..pyramid import viewargs
 from .. import dynmenu as dm
 
 from .interface import IFeatureLayer
 from .extension import FeatureExtension
+from .util import _
 
 
 class ComplexEncoder(geojson.GeoJSONEncoder):
@@ -50,11 +50,11 @@ PR_R = ResourceScope.read
 def feature_browse(request):
     request.resource_permission(PD_READ)
     request.resource_permission(PDS_R)
-    return dict(obj=request.context, subtitle=u"Таблица объектов",
+    return dict(obj=request.context, subtitle=_(u"Feature table"),
                 maxwidth=True, maxheight=True)
 
 
-@viewargs(renderer='nextgisweb:feature_layer/template/show.mako')
+@viewargs(renderer='nextgisweb:feature_layer/template/feature_show.mako')
 def feature_show(request):
     request.resource_permission(PD_READ)
 
@@ -67,7 +67,7 @@ def feature_show(request):
 
     return dict(
         obj=request.context,
-        subtitle=u"Объект #%d" % feature_id,
+        subtitle=_(u"Feature #%d") % feature_id,
         feature_id=feature_id,
         ext_mid=ext_mid)
 
@@ -77,11 +77,6 @@ def feature_update(request):
     request.resource_permission(PD_WRITE)
 
     feature_id = int(request.matchdict['feature_id'])
-
-    ext_mid = OrderedDict()
-    for k, ecls in FeatureExtension.registry._dict.iteritems():
-        if hasattr(ecls, 'editor_widget'):
-            ext_mid[k] = ecls.editor_widget
 
     fields = []
     for f in request.context.fields:
@@ -95,7 +90,7 @@ def feature_update(request):
         obj=request.context,
         feature_id=feature_id,
         fields=fields,
-        subtitle=u"Объект #%d" % feature_id,
+        subtitle=_(u"Feature #%d") % feature_id,
         maxheight=True)
 
 
@@ -266,6 +261,13 @@ def setup_pyramid(comp, config):
         """ Сервис идентификации объектов на слоях, поддерживающих интерфейс
         IFeatureLayer """
 
+        sett_name = 'permissions.disable_check.identify'
+        setting_disable_check = request.env.core.settings.get(sett_name, 'false').lower()
+        if setting_disable_check in ('true', 'yes', '1'):
+            setting_disable_check = True
+        else:
+            setting_disable_check = False
+
         srs = int(request.json_body['srs'])
         geom = geom_from_wkt(request.json_body['geom'], srid=srs)
         layers = map(int, request.json_body['layers'])
@@ -278,7 +280,7 @@ def setup_pyramid(comp, config):
         feature_count = 0
 
         for layer in layer_list:
-            if not layer.has_permission(DataScope.read, request.user):
+            if not setting_disable_check and not layer.has_permission(DataScope.read, request.user):
                 result[layer.id] = dict(error="Forbidden")
 
             elif not IFeatureLayer.providedBy(layer):
@@ -302,7 +304,12 @@ def setup_pyramid(comp, config):
                 # родительского ресурса (можно использовать в случае,
                 # если на клиенте нет возможности извлечь имя слоя по
                 # идентификатору)
-                if layer.parent.has_permission(PR_R, request.user):
+                if not setting_disable_check:
+                    allow = layer.parent.has_permission(PR_R, request.user)
+                else:
+                    allow = True
+
+                if allow:
                     for feature in features:
                         feature['parent'] = layer.parent.display_name
 
@@ -394,16 +401,16 @@ def setup_pyramid(comp, config):
 
         def build(self, args):
             if IFeatureLayer.providedBy(args.obj):
-                yield dm.Label('feature_layer', u"Векторный слой")
+                yield dm.Label('feature_layer', _(u"Vector layer"))
 
                 yield dm.Link(
-                    'feature_layer/feature-browse', u"Таблица объектов",
+                    'feature_layer/feature-browse', _(u"Feature table"),
                     lambda args: args.request.route_url(
                         "feature_layer.feature.browse",
                         id=args.obj.id))
 
                 yield dm.Link(
-                    'feature_layer/geojson', u"Данные GeoJSON",
+                    'feature_layer/geojson', _(u"Download as GeoJSON"),
                     lambda args: args.request.route_url(
                         "feature_layer.geojson",
                         id=args.obj.id))
@@ -411,6 +418,6 @@ def setup_pyramid(comp, config):
     Resource.__dynmenu__.add(LayerMenuExt())
 
     Resource.__psection__.register(
-        key='fields', title=u"Атрибуты",
+        key='fields', title=_(u"Attributes"),
         template="nextgisweb:feature_layer/template/section_fields.mako",
         is_applicable=lambda (obj): IFeatureLayer.providedBy(obj))

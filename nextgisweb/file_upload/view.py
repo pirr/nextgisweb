@@ -10,7 +10,7 @@ from subprocess import check_output
 from pyramid.response import Response
 
 from ..env import env
-from ..pyramidcomp import viewargs
+from ..pyramid import viewargs
 
 
 @viewargs(renderer='nextgisweb:file_upload/template/test.mako')
@@ -115,7 +115,7 @@ def setup_pyramid(comp, config):
 
     config.add_route(
         'file_upload.upload',
-        '/api/component/file_upload/upload', client=()) \
+        '/api/component/file_upload/upload') \
         .add_view(upload_post, method='POST') \
         .add_view(upload_put, method='PUT')
 

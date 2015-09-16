@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals, print_function, absolute_import
 import codecs
 from ConfigParser import ConfigParser
 
@@ -21,7 +22,7 @@ from .env import Env, setenv
 def pkginfo():
     components = (
         'core',
-        'pyramidcomp',
+        'pyramid',
         'auth',
         'resource',
         'resmeta',
@@ -85,12 +86,9 @@ def amd_packages():
 
         # Пакеты nextgisweb
         ('ngw', 'nextgisweb:amd_packages/ngw'),
-        ('feature_layer', 'nextgisweb:amd_packages/feature_layer'),
-        ('webmap', 'nextgisweb:amd_packages/webmap'),
-        ('wmsclient', 'nextgisweb:amd_packages/wmsclient'),
 
         # Пакеты компонентов
-        ('ngw-pyramid', 'nextgisweb:pyramidcomp/amd/ngw-pyramid'),
+        ('ngw-pyramid', 'nextgisweb:pyramid/amd/ngw-pyramid'),
         ('ngw-resource', 'nextgisweb:resource/amd/ngw-resource'),
         ('ngw-resmeta', 'nextgisweb:resmeta/amd/ngw-resmeta'),
         ('ngw-feature-layer', 'nextgisweb:feature_layer/amd'),
@@ -103,4 +101,7 @@ def amd_packages():
         ('ngw-vector-layer', 'nextgisweb:vector_layer/amd/ngw-vector-layer'),
         ('ngw-raster-layer', 'nextgisweb:raster_layer/amd/ngw-raster-layer'),
         ('ngw-webmap', 'nextgisweb:webmap/amd/ngw-webmap'),
+        ('ngw-auth', 'nextgisweb:auth/amd/ngw-auth'),
+        ('ngw-file-upload', 'nextgisweb:file_upload/amd/ngw-file-upload'),
+        ('ngw-spatial-ref-sys', 'nextgisweb:spatial_ref_sys/amd/ngw-spatial-ref-sys'),
     )

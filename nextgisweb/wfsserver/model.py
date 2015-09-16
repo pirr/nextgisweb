@@ -5,17 +5,21 @@ from .. import db
 from ..models import declarative_base, DBSession
 from ..resource import (
     Resource,
-    MetadataScope,
+    ServiceScope,
     Serializer,
     SerializedProperty as SP,
     ResourceGroup)
+
+from .util import _
 
 Base = declarative_base()
 
 
 class Service(Base, Resource):
     identity = 'wfsserver_service'
-    cls_display_name = "Сервис WFS"
+    cls_display_name = _("WFS service")
+
+    __scope__ = ServiceScope
 
     @classmethod
     def check_parent(self, parent):
@@ -77,7 +81,5 @@ class ServiceSerializer(Serializer):
     identity = Service.identity
     resclass = Service
 
-    _defaults = dict(read=MetadataScope.read,
-                     write=MetadataScope.write)
-
-    layers = _layers_attr(**_defaults)
+    layers = _layers_attr(read=ServiceScope.connect,
+                          write=ServiceScope.configure)

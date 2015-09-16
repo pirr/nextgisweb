@@ -3,12 +3,13 @@ from __future__ import unicode_literals
 
 from pyramid.response import Response
 
-from ..resource import Widget, resource_factory, Resource
+from ..resource import Widget, resource_factory, Resource, ServiceScope
 from .model import Service
 
 from .third_party.FeatureServer.Server import Server, FeatureServerException
 from .third_party.web_request.response import Response as FeatureserverResponse
 
+from .util import _
 from nextgis_to_fs import NextgiswebDatasource
 
 
@@ -23,6 +24,8 @@ class ServiceWidget(Widget):
 
 def handler(obj, request):
     # import ipdb; ipdb.set_trace()
+    request.resource_permission(ServiceScope.connect)
+
     params = dict((k.upper(), v) for k, v in request.params.iteritems())
 
     req = params.get('REQUEST')
@@ -47,8 +50,8 @@ def handler(obj, request):
         'typenames': params.get('TYPENAMES'),   # WFS 2.0.0
         'srsname': params.get('SRSNAME'),
         'version': params.get('VERSION'),
-        'maxfeatures': params.get('MAXFEATURES'),
-        'count': params.get('COUNT'),
+        'maxfeatures': params.get('MAXFEATURES'),   # WFS 1.0.0
+        'count': params.get('COUNT'),               # WFS 2.0.0
         'startfeature': params.get('STARTFEATURE'),
         'filter': params.get('FILTER'),
         'format': params.get('OUTPUTFORMAT'),
@@ -95,14 +98,13 @@ def handler(obj, request):
 
 
 def setup_pyramid(comp, config):
-
     config.add_route(
-        'wfsserver.wfs', '/resource/{id:\d+}/wfs',
-        factory=resource_factory, client=('id',)
+        'wfsserver.wfs', '/api/resource/{id:\d+}/wfs',
+        factory=resource_factory
     ).add_view(handler, context=Service)
 
     Resource.__psection__.register(
         key='wfsserver', priority=50,
-        title="Сервис WFS",
+        title=_("WFS service"),
         is_applicable=lambda obj: obj.cls == 'wfsserver_service',
         template='nextgisweb:wfsserver/template/section.mako')
