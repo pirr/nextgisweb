@@ -14,7 +14,6 @@ from ..resource import (
     resource_factory,
     Widget)
 from ..geometry import geom_from_wkt
-from ..object_widget import ObjectWidget, CompositeWidget
 from ..pyramid import viewargs
 from .. import dynmenu as dm
 
@@ -139,7 +138,7 @@ def store_collection(layer, request):
 
     query = layer.feature_query()
 
-    http_range = request.headers.get('range', None)
+    http_range = request.headers.get('range')
     if http_range and http_range.startswith('items='):
         first, last = map(int, http_range[len('items='):].split('-', 1))
         query.limit(last - first + 1, first)
@@ -151,7 +150,7 @@ def store_collection(layer, request):
     if len(field_list) > 0:
         query.fields(*field_list)
 
-    box = request.headers.get('x-feature-box', None)
+    box = request.headers.get('x-feature-box')
     if box:
         query.box()
 
@@ -185,8 +184,8 @@ def store_collection(layer, request):
 def store_item(layer, request):
     request.resource_permission(PD_READ)
 
-    box = request.headers.get('x-feature-box', None)
-    ext = request.headers.get('x-feature-ext', None)
+    box = request.headers.get('x-feature-box')
+    ext = request.headers.get('x-feature-ext')
 
     query = layer.feature_query()
     query.filter_by(id=request.matchdict['feature_id'])
@@ -218,44 +217,6 @@ def store_item(layer, request):
 
 def setup_pyramid(comp, config):
     DBSession = comp.env.core.DBSession
-
-    class LayerFieldsWidget(ObjectWidget):
-
-        def is_applicable(self):
-            return self.operation == 'edit'
-
-        def populate_obj(self):
-            obj = self.obj
-            data = self.data
-
-            if 'feature_label_field_id' in data:
-                obj.feature_label_field_id = data['feature_label_field_id']
-
-            fields = dict(map(lambda fd: (fd['id'], fd), data['fields']))
-            for f in obj.fields:
-                if f.id in fields:
-
-                    if 'display_name' in fields[f.id]:
-                        f.display_name = fields[f.id]['display_name']
-
-                    if 'grid_visibility' in fields[f.id]:
-                        f.grid_visibility = fields[f.id]['grid_visibility']
-
-        def widget_module(self):
-            return 'feature_layer/LayerFieldsWidget'
-
-        def widget_params(self):
-            result = super(LayerFieldsWidget, self).widget_params()
-
-            if self.obj:
-                result['value'] = dict(
-                    fields=map(lambda f: f.to_dict(), self.obj.fields),
-                    feature_label_field_id=self.obj.feature_label_field_id,
-                )
-
-            return result
-
-    comp.LayerFieldsWidget = LayerFieldsWidget
 
     def identify(request):
         """ Сервис идентификации объектов на слоях, поддерживающих интерфейс
