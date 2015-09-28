@@ -107,7 +107,7 @@ define([
                             "item_type": "layer",
                             "keyname": null,
                             "display_name": itm.display_name,
-                            "maxfeatures": itm.maxfeatures,
+                            "maxfeatures": 1000,
                             "resource_id": itm.id
                         }, {
                             parent: widget.getAddParent(),
