@@ -96,7 +96,7 @@
                         <li class="pure-menu-item"><a href="${request.route_url('pyramid.help_page')}" class="pure-menu-link">${tr(_('Help'))}</a></li>
                     %endif
 
-                    <li><a href="${request.route_url('resource.search', _query={'q':'""'})}">${tr(_('Find resource'))}</a></li>
+                    <li class="pure-menu-item"><a href="${request.route_url('resource.search', _query={'q':'""'})}" class="pure-menu-link">${tr(_('Find resource'))}</a></li>
 
                     %for locale in request.env.core.locale_available:
                         <li class="pure-menu-item"><a href="${request.route_url('pyramid.locale', locale=locale, _query=dict(next=request.url))}" class="pure-menu-link">${locale.upper()}</a></li>
