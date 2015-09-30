@@ -110,15 +110,16 @@ class Request (object):
     def _set_bbox(self, action, bbox_value):
         """Analyze bbox parameter, set bbox attribute of the action
         """
+        coords = bbox_value['coords']
         try:
-            action.bbox = map(float, bbox_value.split(","))
+            coords = map(float,coords)
         except ValueError:
             raise InvalidValueWFSException(
                 message="Bbox values are't numeric: '%s'"
-                % (bbox_value, )
+                % (coords, )
             )
         try:
-            minX, minY, maxX, maxY = action.bbox
+            minX, minY, maxX, maxY = coords
         except ValueError:
             raise InvalidValueWFSException(
                 message="Bbox values must be in format: minX,minY,maxX,maxY"
@@ -127,6 +128,18 @@ class Request (object):
             raise InvalidValueWFSException(
                 message="Bbox values must be: minX<maxX,minY<maxY"
             )
+
+        bbox = {'coords': coords}
+        if 'SRS' in bbox_value:
+            srs = bbox_value['SRS']
+            # SRS ID stored as the digits after the last ":" character
+            try:
+                srs_id = int(srs.split(':')[-1])
+                bbox['srs_id'] = srs_id
+            except ValueError:
+                raise InvalidValueWFSException(message="Can't parse SRS: %s" % (srs, ))
+
+        action.bbox = bbox
         return action
 
     def _set_maxfeatures(self, action, maxfeatures_value):
@@ -209,6 +222,8 @@ class Request (object):
                         action.version = value
                     elif key == "filter":
                         action = self._set_filter(action, value)
+                    elif key == 'outputformat':
+                        action.outputformat = value
                     elif key in queryable or key.upper() in queryable and hasattr(self.service.datasources[ds], 'query_action_types'):
                         if qtype:
                             if qtype in self.service.datasources[ds].query_action_types:
