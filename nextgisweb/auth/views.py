@@ -267,11 +267,22 @@ def setup_pyramid(comp, config):
         wresult = request.POST['wresult']
 
         from lxml import etree
+        import xmlsec
+
         tree = etree.fromstring(wresult)
+        token = tree.find('{http://schemas.xmlsoap.org/ws/2005/02/trust}RequestedSecurityToken')
 
-        # TODO: Add xml signature validation
+        mgr = xmlsec.KeysManager()
+        key = xmlsec.Key.from_file(
+            comp.settings['adfs.enckey'],
+            xmlsec.KeyFormat.PEM, None)
+        mgr.add_key(key)
 
-        node = tree.find('.//{urn:oasis:names:tc:SAML:1.0:assertion}NameIdentifier')
+        ctx = xmlsec.EncryptionContext(mgr)
+        encrypted = xmlsec.tree.find_child(token, "EncryptedData", xmlsec.Namespace.ENC)
+        decrypted = ctx.decrypt(encrypted)
+
+        node = decrypted.find('.//{urn:oasis:names:tc:SAML:1.0:assertion}NameIdentifier')
         uname = node.text
 
         try:
