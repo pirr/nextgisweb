@@ -73,6 +73,8 @@ body { font-size: 12px; }
         border-right-color: white;
     }
 
+    .header img.logo { float: left; }
+
 .title {
     color: #0071BC;
     padding: 1.5ex 1ex;

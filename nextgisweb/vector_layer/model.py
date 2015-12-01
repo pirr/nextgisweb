@@ -24,8 +24,9 @@ from ..resource import (
     DataScope,
     Serializer,
     SerializedProperty as SP,
-    SerializedRelationship as SR)
-from ..resource.exception import ValidationError
+    SerializedRelationship as SR,
+    ResourceGroup)
+from ..resource.exception import ValidationError, ResourceError
 from ..env import env
 from ..geometry import geom_from_wkb, box
 from ..models import declarative_base, DBSession
@@ -248,9 +249,11 @@ class VectorLayer(Base, Resource, SpatialLayerMixin, LayerFieldsMixin):
     tbl_uuid = db.Column(db.Unicode(32), nullable=False)
     geometry_type = db.Column(db.Enum(*GEOM_TYPE.enum), nullable=False)
 
+    __field_class__ = VectorLayerField
+
     @classmethod
     def check_parent(self, parent):
-        return parent.cls == 'resource_group'
+        return isinstance(parent, ResourceGroup)
 
     @property
     def _tablename(self):
@@ -302,8 +305,49 @@ class VectorLayer(Base, Resource, SpatialLayerMixin, LayerFieldsMixin):
             if f.keyname in feature.fields:
                 setattr(obj, f.key, feature.fields[f.keyname])
 
+        obj.geom = ga.WKTSpatialElement(
+                str(feature.geom), self.srs_id)
+
         DBSession.merge(obj)
 
+    def feature_create(self, feature_description):
+        """Вставляет в БД новый объект, описание которого дается в feature_description
+
+        :param feature_description: описание объекта
+        :type feature_description:  dict
+
+        :return:    ID вставленного объекта
+        """
+        tableinfo = TableInfo.from_layer(self)
+        tableinfo.setup_metadata(tablename=self._tablename)
+
+        obj = tableinfo.model()
+        for f in tableinfo.fields:
+            if f.keyname in feature_description.keys():
+                setattr(obj, f.key, feature_description[f.keyname])
+
+        obj.geom = ga.WKTSpatialElement(
+                str(feature_description['geom']), self.srs_id)
+
+        DBSession.add(obj)
+        DBSession.flush()
+        DBSession.refresh(obj)
+
+        return obj.id
+
+
+    def feature_delete(self, feature_id):
+        """Удаляет запись с заданным id
+
+        :param feature_id: идентификатор записи
+        :type feature_id:  int or bigint
+        """
+        tableinfo = TableInfo.from_layer(self)
+        tableinfo.setup_metadata(tablename=self._tablename)
+
+        obj = DBSession.query(tableinfo.model).filter_by(id=feature_id).one()
+
+        DBSession.delete(obj)
 
 def _vector_layer_listeners(table):
     event.listen(
@@ -374,6 +418,22 @@ def _set_encoding(encoding):
 
         def __enter__(self):
 
+            def strdecode(x):
+                if len(x) >= 254:
+
+                    # Костылек для косячка с обрезкой по 254 - 255 байтам
+                    # юникодных строк. До тех пор пока не получится
+                    # декодировать строку откусываем по байту справа.
+
+                    while True:
+                        try:
+                            x.decode(self.encoding)
+                            break
+                        except UnicodeDecodeError:
+                            x = x[:-1]
+
+                return x.decode(self.encoding)
+
             if self.encoding and gdal_gt_19:
                 # Для GDAL 1.9 устанавливаем значение SHAPE_ENCODING
 
@@ -384,11 +444,11 @@ def _set_encoding(encoding):
                 # Установим новое
                 self.set_option('SHAPE_ENCODING', '')
 
-                return lambda (x): x.decode(self.encoding)
+                return strdecode
 
             elif self.encoding:
                 # Функция обертка для других версий GDAL
-                return lambda (x): x.decode(self.encoding)
+                return strdecode
 
             return lambda (x): x
 
@@ -415,7 +475,7 @@ class _source_attr(SP):
             raise VE("Набор данных содержит более одного слоя.")
 
         ogrlayer = ogrds.GetLayer(0)
-        if not ogrlayer:
+        if ogrlayer is None:
             raise VE("Не удалось открыть слой.")
 
         return ogrlayer
@@ -428,7 +488,7 @@ class _source_attr(SP):
         feat = ogrlayer.GetNextFeature()
         while feat:
             geom = feat.GetGeometryRef()
-            if not geom:
+            if geom is None:
                 raise VE("Объект %d не содержит геометрии." % feat.GetFID())
             feat = ogrlayer.GetNextFeature()
 
@@ -457,7 +517,7 @@ class _source_attr(SP):
                 ogrds = ogr.Open(ogrfn)
                 recode = sdecode
 
-            if not ogrds:
+            if ogrds is None:
                 raise VE("Библиотеке OGR не удалось открыть файл")
 
             drivername = ogrds.GetDriver().GetName()
@@ -473,6 +533,20 @@ class _source_attr(SP):
                 shutil.rmtree(ogrfn)
 
 
+class _geometry_type_attr(SP):
+
+    def setter(self, srlzr, value):
+        if value not in GEOM_TYPE.enum:
+            raise ValidationError("Недопустимый тип геометрии.")
+
+        if srlzr.obj.id is None:
+            srlzr.obj.geometry_type = value
+
+        elif srlzr.obj.geometry_type != value:
+            raise ResourceError(
+                "Невозможно изменить тип геометрии существующего ресурса.")
+
+
 P_DS_READ = DataScope.read
 P_DS_WRITE = DataScope.write
 
@@ -482,6 +556,8 @@ class VectorLayerSerializer(Serializer):
     resclass = VectorLayer
 
     srs = SR(read=P_DS_READ, write=P_DS_WRITE)
+    geometry_type = _geometry_type_attr(read=P_DS_READ, write=P_DS_WRITE)
+
     source = _source_attr(read=None, write=P_DS_WRITE)
 
 

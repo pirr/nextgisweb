@@ -7,6 +7,7 @@ from ..resource import Widget, resource_factory
 from .model import Service
 
 from .third_party.FeatureServer.Server import Server, FeatureServerException
+from .third_party.web_request.response import Response as FeatureserverResponse
 
 from nextgis_to_fs import NextgiswebDatasource
 
@@ -25,6 +26,8 @@ def handler(obj, request):
         return
 
     req = request.params.get('REQUEST')
+    post_data = request.body
+    request_method = request.method
 
     params = {
         'service': request.params.get('SERVICE'),
@@ -39,7 +42,6 @@ def handler(obj, request):
     # None values can cause parsing errors in featureserver. So delete 'Nones':
     params = {key:params[key] for key in params if params[key] is not None}
 
-
     datasources = {l.keyname: NextgiswebDatasource(l.keyname,
         layer=l.resource,
         title=l.display_name) for l in obj.layers
@@ -51,21 +53,26 @@ def handler(obj, request):
 
     try:
         result = server.dispatchRequest(base_path=base_path,
-                                    path_info='/'+sourcenames, params=params)
+                                    path_info='/'+sourcenames, params=params,
+                                    post_data=post_data,
+                                    request_method=request_method)
     except FeatureServerException as e:
         data = e.data
         content_type = e.mime
         return Response(data, content_type=content_type)
 
-    if req.lower() in ['getcapabilities', 'describefeaturetype']:
+    # Отправляем результат обработки
+
+    if isinstance(result, tuple):
+        # ответ на запросы req.lower() in ['getcapabilities', 'describefeaturetype']
         content_type, resxml = result
         resp = Response(resxml, content_type=content_type)
         return resp
-    elif req.lower() == 'getfeature':
+    elif isinstance(result, FeatureserverResponse):
+        # ответ на запрос GetFeature, Update, Insert, Delete
         data = result.getData()
         return Response(data, content_type=result.content_type)
-    else:
-        print "UNKNOWN request!!!!!"
+
 
 def setup_pyramid(comp, config):
     config.add_route(
