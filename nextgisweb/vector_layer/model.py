@@ -277,6 +277,7 @@ class VectorLayer(Base, Resource, SpatialLayerMixin, LayerFieldsMixin):
 
     tbl_uuid = db.Column(db.Unicode(32), nullable=False)
     geometry_type = db.Column(db.Enum(*GEOM_TYPE.enum), nullable=False)
+    tracked = db.Column(db.Boolean, nullable=False, default=False)
 
     __field_class__ = VectorLayerField
 
@@ -598,6 +599,7 @@ class VectorLayerSerializer(Serializer):
 
     srs = SR(read=P_DS_READ, write=P_DS_WRITE)
     geometry_type = _geometry_type_attr(read=P_DS_READ, write=P_DS_WRITE)
+    tracked = SP(read=P_DS_READ, write=P_DS_WRITE)
 
     source = _source_attr(read=None, write=P_DS_WRITE)
 

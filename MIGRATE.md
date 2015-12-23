@@ -28,3 +28,11 @@ UPDATE auth_user SET disabled = FALSE;
 ALTER TABLE auth_user ALTER COLUMN superuser SET NOT NULL;
 ALTER TABLE auth_user ALTER COLUMN disabled SET NOT NULL;
 ```
+
+### `--` (2015-12-23)
+
+```sql
+ALTER TABLE vector_layer ADD COLUMN tracked boolean;
+UPDATE vector_layer SET tracked = FALSE;
+ALTER TABLE vector_layer ALTER COLUMN tracked SET NOT NULL;
+```
