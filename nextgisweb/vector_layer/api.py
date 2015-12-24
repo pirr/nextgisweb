@@ -56,23 +56,36 @@ def diff(request):
     try:
         track = DBSession.connection().execute(stmt)
         
-        tracked_ids = []
         op_lookup = {}
+        c_ids = []
+        u_ids = []
+        d_ids = []
         for id, op in track:
             op_lookup[id] = op
-            tracked_ids.append(id)
+            if op == '+':
+                c_ids.append(id)
+            elif op == ':':
+                u_ids.append(id)
+            elif op == '-':
+                d_ids.append(id)
 
-        if not tracked_ids:
+        if not (c_ids or u_ids):
             result = []
         else:
             query = obj.feature_query()
-            query.in_(id=tracked_ids)
+            query.in_(id=(c_ids + u_ids))
             query.geom()
 
-            result = map(serialize, query())
+            features = map(serialize, query())
 
-            for feat in result:
-                feat["operation"] = op_lookup.get(feat.get('id'))
+            result = dict(added=[], changed=[])
+            for feat in features:
+                if feat.get('id') in c_ids:
+                    result.get("added").append(feat)
+                elif feat.get('id') in u_ids:
+                    result.get("changed").append(feat)
+
+            result["deleted"] = d_ids
 
     except exc.SQLAlchemyError as e:
         raise ValidationError(e.message)
