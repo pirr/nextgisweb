@@ -589,6 +589,23 @@ class _geometry_type_attr(SP):
             raise ResourceError(_("Geometry type for existing resource can not be changed."))
 
 
+class _tracked_attr(SP):
+
+    def setter(self, srlzr, value):
+        try:
+            if value:
+                DBSession.connection().execute(sql.select([
+                    db.func.ht_init("vector_layer", srlzr.obj._tablename),]))
+            else:
+                DBSession.connection().execute(sql.select([
+                    db.func.ht_drop("vector_layer", srlzr.obj._tablename),]))
+
+            srlzr.obj.tracked = value
+
+        except:
+            srlzr.obj.tracked = False
+
+
 P_DS_READ = DataScope.read
 P_DS_WRITE = DataScope.write
 
@@ -601,6 +618,7 @@ class VectorLayerSerializer(Serializer):
     geometry_type = _geometry_type_attr(read=P_DS_READ, write=P_DS_WRITE)
 
     source = _source_attr(read=None, write=P_DS_WRITE)
+    tracked = _tracked_attr(read=P_DS_READ, write=P_DS_WRITE)
 
 
 class FeatureQueryBase(object):
