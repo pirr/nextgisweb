@@ -5,13 +5,12 @@ import sqlalchemy.sql as sql
 from sqlalchemy import exc
 from sqlalchemy.orm.exc import NoResultFound
 
-from pyramid import httpexceptions
+from pyramid.httpexceptions import HTTPNotFound, HTTPBadRequest
 from pyramid.response import Response
 
 from .model import VectorLayer
 from ..models import DBSession
 from ..resource import DataScope
-from ..resource.exception import ValidationError
 from ..feature_layer.api import serialize
 
 from .util import _
@@ -28,7 +27,7 @@ def diff(request):
     try:
         obj = VectorLayer.filter_by(id=request.matchdict['id']).one()
     except NoResultFound:
-        raise httpexceptions.HTTPNotFound()
+        raise HTTPNotFound()
     
     request.resource_permission(PERM_READ, obj)
 
@@ -37,7 +36,7 @@ def diff(request):
 
     tracked = obj.tracked
     if not tracked:
-        raise ValidationError(_("Tracking history is not enabled for this layer"))
+        raise HTTPBadRequest(_("Tracking history is not enabled for this layer"))
 
     ts_func = "vector_layer.%s_Diff" % obj._tablename
     tag_func = "vector_layer.%s_DiffToTag" % obj._tablename
@@ -88,7 +87,7 @@ def diff(request):
             result["deleted"] = d_ids
 
     except exc.SQLAlchemyError as e:
-        raise ValidationError(e.message)
+        raise HTTPBadRequest(e.message)
 
 
     return Response(
