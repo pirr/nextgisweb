@@ -599,7 +599,6 @@ class VectorLayerSerializer(Serializer):
 
     srs = SR(read=P_DS_READ, write=P_DS_WRITE)
     geometry_type = _geometry_type_attr(read=P_DS_READ, write=P_DS_WRITE)
-    tracked = SP(read=P_DS_READ, write=P_DS_WRITE)
 
     source = _source_attr(read=None, write=P_DS_WRITE)
 
@@ -628,6 +627,7 @@ class FeatureQueryBase(object):
         self._filter = None
         self._filter_by = None
         self._like = None
+        self._in_ = None
         self._intersects = None
 
         self._order_by = None
@@ -663,6 +663,9 @@ class FeatureQueryBase(object):
 
     def like(self, value):
         self._like = value
+
+    def in_(self, **kwargs):
+        self._in_ = kwargs
 
     def intersects(self, geom):
         self._intersects = geom
@@ -738,6 +741,13 @@ class FeatureQueryBase(object):
                         '%' + self._like + '%'))
 
             where.append(db.or_(*l))
+
+        if self._in_:
+            for k, v in self._in_.iteritems():
+                if k == 'id':
+                    where.append(table.columns.id.in_(v))
+                else:
+                    where.append(table.columns[tableinfo[k].key].in_(v))
 
         if self._intersects:
             intgeom = db.func.st_setsrid(db.func.st_geomfromtext(
