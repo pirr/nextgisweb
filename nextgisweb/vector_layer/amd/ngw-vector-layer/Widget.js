@@ -15,7 +15,8 @@ define([
     "dojox/layout/TableContainer",
     "ngw-spatial-ref-sys/SpatialRefSysSelect",
     "ngw-file-upload/Uploader",
-    "dijit/form/ComboBox"
+    "dijit/form/ComboBox",
+    "dijit/form/CheckBox"
 ], function (
     declare,
     lang,
@@ -41,6 +42,7 @@ define([
             setObject("srs", { id: this.wSrs.get("value") });
             setObject("source", this.wSourceFile.get("value"));
             setObject("source.encoding", this.wSourceEncoding.get("value"));
+            setObject("tracked", this.wTracked.get("value"));
         }
 
     });
