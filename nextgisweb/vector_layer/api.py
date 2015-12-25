@@ -56,7 +56,7 @@ def diff(request):
 
     try:
         track = DBSession.connection().execute(sql_stmt)
-        
+
         op_lookup = {}
         c_ids = []
         u_ids = []
@@ -70,23 +70,19 @@ def diff(request):
             elif op == '-':
                 d_ids.append(id)
 
-        if not (c_ids or u_ids):
-            result = []
-        else:
+        result = dict(added=[], changed=[], deleted=d_ids)
+
+        if c_ids or u_ids:
             query = obj.feature_query()
             query.in_(id=(c_ids + u_ids))
             query.geom()
 
             features = map(serialize, query())
-
-            result = dict(added=[], changed=[])
             for feat in features:
                 if feat.get('id') in c_ids:
                     result.get("added").append(feat)
                 elif feat.get('id') in u_ids:
                     result.get("changed").append(feat)
-
-            result["deleted"] = d_ids
 
     except exc.SQLAlchemyError as e:
         raise HTTPBadRequest(e.message)
