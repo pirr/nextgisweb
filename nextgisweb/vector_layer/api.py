@@ -31,29 +31,31 @@ def diff(request):
     
     request.resource_permission(PERM_READ, obj)
 
-    ts = request.GET.get('ts')
-    tag = request.GET.get('tag')
+    ts_start = request.GET.get('ts_start')
+    ts_end = request.GET.get('ts_end')
 
     tracked = obj.tracked
     if not tracked:
         raise HTTPBadRequest(_("Tracking history is not enabled for this layer"))
 
-    ts_func = "vector_layer.%s_Diff" % obj._tablename
-    tag_func = "vector_layer.%s_DiffToTag" % obj._tablename
-        
-    if tag is not None:
-        stmt = sql.text("SELECT id, operation FROM %s(:tag)" % tag_func,
-                  bindparams=[sql.bindparam('tag', tag, type_=db.Integer)])
+    diff_func = "vector_layer.%s_Diff" % obj._tablename
 
-    elif ts is not None:
-        stmt = sql.text("SELECT id, operation FROM %s(:ts)" % ts_func,
-                  bindparams=[sql.bindparam('ts', ts, type_=db.DateTime)])
+    if ts_start is not None and ts_end is not None:
+        sql_stmt = sql.text("SELECT id, operation FROM %s(:ts_start, :ts_end)" % diff_func,
+            bindparams=[
+                sql.bindparam('ts_start', ts_start, type_=db.DateTime),
+                sql.bindparam('ts_end', ts_end, type_=db.DateTime)])
+
+    elif ts_start is not None:
+        sql_stmt = sql.text("SELECT id, operation FROM %s(:ts_start)" % diff_func,
+            bindparams=[
+                sql.bindparam('ts_start', ts_start, type_=db.DateTime)])
 
     else:
-        stmt = sql.text("SELECT id, operation FROM %s()" % ts_func)
+        sql_stmt = sql.text("SELECT id, operation FROM %s()" % diff_func)
 
     try:
-        track = DBSession.connection().execute(stmt)
+        track = DBSession.connection().execute(sql_stmt)
         
         op_lookup = {}
         c_ids = []
