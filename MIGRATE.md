@@ -36,3 +36,11 @@ ALTER TABLE vector_layer ADD COLUMN tracked boolean;
 UPDATE vector_layer SET tracked = FALSE;
 ALTER TABLE vector_layer ALTER COLUMN tracked SET NOT NULL;
 ```
+
+#### `-- 5dee01ca98d3e19e2b1598ca54bab29c6293d02c` (2015-12-28)
+
+```sql
+ALTER TABLE auth_group ADD COLUMN register boolean;
+UPDATE auth_group SET register = FALSE;
+ALTER TABLE auth_group ALTER COLUMN register SET NOT NULL;
+```
