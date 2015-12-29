@@ -22,10 +22,11 @@ PERM_READ = DataScope.read
 PERM_WRITE = DataScope.write
 
 
-def diff(request):
+def _diff(request, layer_id=None):
+    id = layer_id if layer_id is not None else request.matchdict['id']
 
     try:
-        obj = VectorLayer.filter_by(id=request.matchdict['id']).one()
+        obj = VectorLayer.filter_by(id=id).one()
     except NoResultFound:
         raise HTTPNotFound()
     
@@ -87,9 +88,11 @@ def diff(request):
     except exc.SQLAlchemyError as e:
         raise HTTPBadRequest(e.message)
 
+    return result
 
+def diff(request):
     return Response(
-        json.dumps(result),
+        json.dumps(_diff(request)),
         content_type=b'application/json')
 
 def setup_pyramid(comp, config):
