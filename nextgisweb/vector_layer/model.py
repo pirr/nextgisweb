@@ -626,10 +626,10 @@ class _tracked_attr(SP):
 
     def setter(self, srlzr, value):
         try:
-            if value:
+            if not srlzr.obj.tracked and value:
                 DBSession.connection().execute(sql.select([
                     db.func.ht_init("vector_layer", srlzr.obj._tablename),]))
-            else:
+            elif srlzr.obj.tracked and not value:
                 DBSession.connection().execute(sql.select([
                     db.func.ht_drop("vector_layer", srlzr.obj._tablename),]))
 
