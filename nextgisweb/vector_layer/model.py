@@ -651,7 +651,10 @@ class FeatureQueryBase(object):
         self._offset = offset
 
     def filter(self, *args):
-        self._filter = args
+        if len(args) > 0 and isinstance(args[0], list):
+            self._filter = args[0]
+        else:
+            self._filter = args
 
     def filter_by(self, **kwargs):
         self._filter_by = kwargs
@@ -719,12 +722,11 @@ class FeatureQueryBase(object):
 
         if self._filter:
             l = []
-            for k, o, v in self._filter:
-                op = getattr(operator, o)
-                if k == 'id':
-                    l.append(op(table.columns.id, v))
+            for table_column, op, val in self._filter:
+                if table_column == 'id':
+                    l.append(op(table.columns.id, val))
                 else:
-                    l.append(op(table.columns[tableinfo[k].key], v))
+                    l.append(op(table.columns[tableinfo[table_column].key], val))
 
             where.append(db.and_(*l))
 
