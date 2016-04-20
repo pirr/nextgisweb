@@ -30,6 +30,7 @@ requires = [
     'owslib>0.11.0',
     'requests',
     'babel',
+    'mapbox-vector-tile',
 ]
 
 entry_points = {
