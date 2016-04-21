@@ -100,19 +100,20 @@ def view_mvt(request):
     # http://javisantana.com/2015/03/22/vector-tiles.html
     # https://github.com/mapzen/mapbox-vector-tile
     request.resource_permission(PERM_READ)
+    resource = request.context
 
     # TODO: Добавить перепроецирование в 3857
-    assert request.context.srs_id == 3857
-    assert isinstance(request.context, VectorLayer)
+    assert resource.srs_id == 3857
+    assert isinstance(resource, VectorLayer)
 
     mvt_extent = 4096
-    mvt_layer = dict(name=str(request.context.id), features=[])
+    mvt_layer = dict(name=str(resource.id), features=[])
 
     tile_zxy = (int(request.matchdict['z']),
                 int(request.matchdict['x']),
                 int(request.matchdict['y']))
 
-    tile_extent = request.context.srs.tile_extent(tile_zxy)
+    tile_extent = resource.srs.tile_extent(tile_zxy)
     minx, miny, maxx, maxy = tile_extent
 
     # Увеличиваем охват запрашиваемой области, чтобы избежать
@@ -129,13 +130,21 @@ def view_mvt(request):
     resx = mvt_extent / (maxx - minx)
     resy = mvt_extent / (maxy - miny)
 
+    props = [('id', 'id')]
+    if request.env.feature_layer.settings.get('mvt.attributes'):
+        props += [('fld_%s' % f.fld_uuid, f.keyname) for f in resource.fields]
+
+    props_sql = ','.join(['%s AS "%s"' % (fld, label) for (fld, label) in props])
+    props_fld = ','.join(['"%s"' % prop[1] for prop in props])
+    keynames = [prop[1] for prop in props]
+
     resolutions = [6378137 * 2 * pi / (2 ** (z + 8)) for z in range(20)]
 
     # TODO: ST_SnapToGrid?
     # TODO: ST_Simplify (определить величину упрощения)
     query = """
         WITH _geom AS (
-            SELECT id,
+            SELECT %(props_sql)s,
                    ST_ClipByBox2d(
                        ST_Simplify(
                            geom,
@@ -148,7 +157,7 @@ def view_mvt(request):
             WHERE geom && ST_MakeEnvelope(%(minx)f, %(miny)f,
                                           %(maxx)f, %(maxy)f)
         )
-        SELECT id, ST_AsBinary(
+        SELECT %(props_fld)s, ST_AsBinary(
             ST_Affine(_clip_geom, %(resx)f, 0, 0, %(resy)f,
                       %(resx)f*%(dx)f, %(resy)f*%(dy)f)
         ) AS geom
@@ -158,13 +167,17 @@ def view_mvt(request):
                minx=minx, miny=miny, maxx=maxx, maxy=maxy,
                minxp=minxp, minyp=minyp, maxxp=maxxp, maxyp=maxyp,
                resolution=resolutions[tile_zxy[0]],
-               tbl_uuid=request.context._tablename)
+               tbl_uuid=request.context._tablename,
+               props_sql=props_sql, props_fld=props_fld)
 
     rows = DBSession.connection().execute(query)
     for feature in rows:
+        properties = dict()
         geom = str(feature['geom'])
+        for key in keynames:
+            properties[key] = feature[key]
         mvt_layer['features'].append(dict(geometry=geom,
-                                          properties=dict(id=feature['id'])))
+                                          properties=properties))
 
     return Response(
         mapbox_vector_tile.encode([mvt_layer]),
