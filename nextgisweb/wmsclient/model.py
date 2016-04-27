@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+import re
 import urllib
 import requests
 import json
@@ -9,6 +10,7 @@ from collections import OrderedDict
 from copy import deepcopy
 
 from zope.interface import implements
+from datetime import datetime, timedelta
 from lxml import etree
 import PIL
 from owslib.wms import WebMapService, WMSCapabilitiesReader
@@ -59,6 +61,28 @@ class Connection(Base, Resource):
     def check_parent(cls, parent):
         return isinstance(parent, ResourceGroup)
 
+    @staticmethod
+    def replace_url_vars(url):
+        # {current_date} - текущая дата в формате DD.MM.YYYY
+        # {current_date±N} - дата на N дней больше (меньше) текущей
+
+        url_vars = re.findall(r'{(current_date(?:[-+]\d+)?)}', url)
+        for var in url_vars:
+            has_sign = False
+            for sign in ['-', '+']:
+                if sign in var:
+                    has_sign = True
+                    date_parts = var.split(sign)
+                    date_now = datetime.now()
+                    date_delta = timedelta(days=int(date_parts[1]))
+                    date = date_now - date_delta if sign == '-' \
+                        else date_now + date_delta
+            if not has_sign:
+                date = datetime.now()
+            url = url.replace('{%s}' % var, date.strftime('%d.%m.%Y'))
+
+        return url
+
     def capcache(self):
         return self.capcache_json is not None \
             and self.capcache_xml is not None \
@@ -66,11 +90,13 @@ class Connection(Base, Resource):
 
     def capcache_query(self):
         self.capcache_tstamp = datetime.utcnow()
-        reader = WMSCapabilitiesReader(self.version, url=self.url,
+        url = self.replace_url_vars(self.url)
+        reader = WMSCapabilitiesReader(self.version,
+                                       url=url,
                                        un=self.username,
                                        pw=self.password,
                                        headers=env.wmsclient.headers)
-        root = reader.read(self.url)
+        root = reader.read(url)
 
         # В версии WMS 1.3.0 для всех элементов обязателен namespace,
         # но некоторые добавляют этот namespace и в более старую версию,
@@ -100,7 +126,8 @@ class Connection(Base, Resource):
         self.capcache_xml = etree.tostring(root)
 
         service = WebMapService(
-            url=self.url, version=self.version,
+            url=url,
+            version=self.version,
             username=self.username,
             password=self.password,
             xml=str(self.capcache_xml))
@@ -225,7 +252,8 @@ class Layer(Base, Resource, SpatialLayerMixin):
             auth = (username, password)
 
         sep = "&" if "?" in self.connection.url else "?"
-        url = self.connection.url + sep + urllib.urlencode(query)
+        url = self.connection.replace_url_vars(self.connection.url) + \
+            sep + urllib.urlencode(query)
         return PIL.Image.open(BytesIO(requests.get(
             url, auth=auth, headers=env.wmsclient.headers).content))
 
