@@ -154,8 +154,8 @@ def view_mvt(request):
                                        %(maxxp)f, %(maxyp)f)
                    ) AS _clip_geom
             FROM vector_layer.%(tbl_uuid)s
-            WHERE geom && ST_MakeEnvelope(%(minx)f, %(miny)f,
-                                          %(maxx)f, %(maxy)f)
+            WHERE geom && ST_MakeEnvelope(%(minxp)f, %(minyp)f,
+                                          %(maxxp)f, %(maxyp)f)
         )
         SELECT %(props_fld)s, ST_AsBinary(
             ST_Affine(_clip_geom, %(resx)f, 0, 0, %(resy)f,
@@ -164,7 +164,6 @@ def view_mvt(request):
         FROM _geom
         WHERE NOT ST_IsEmpty(_clip_geom)
     """ % dict(dx=dx, dy=dy, resx=resx, resy=resy,
-               minx=minx, miny=miny, maxx=maxx, maxy=maxy,
                minxp=minxp, minyp=minyp, maxxp=maxxp, maxyp=maxyp,
                resolution=resolutions[tile_zxy[0]],
                tbl_uuid=request.context._tablename,
