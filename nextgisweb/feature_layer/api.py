@@ -116,12 +116,13 @@ def view_mvt(request):
     tile_extent = resource.srs.tile_extent(tile_zxy)
     minx, miny, maxx, maxy = tile_extent
 
-    # Увеличиваем охват запрашиваемой области, чтобы избежать
-    # возможных артефактов на границах тайлов
-    tile_extent_padded = (minx - (maxx - minx)/2,
-                          miny - (maxy - miny)/2,
-                          maxx + (maxx - minx)/2,
-                          maxy + (maxy - miny)/2)
+    # Увеличиваем охват запрашиваемой области на 5% с каждой стороны,
+    # чтобы избежать возможных артефактов на границах тайлов,
+    # также это позволит корректно отображать точечные данные
+    tile_extent_padded = (minx - (maxx - minx)*0.05,
+                          miny - (maxy - miny)*0.05,
+                          maxx + (maxx - minx)*0.05,
+                          maxy + (maxy - miny)*0.05)
     minxp, minyp, maxxp, maxyp = tile_extent_padded
 
     # Параметры аффинного преобразования
