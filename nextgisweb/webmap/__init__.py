@@ -57,6 +57,10 @@ class WebMapComponent(Component):
             identify_radius=self.settings.get('identify_radius'),
             popup_width=self.settings.get('popup_width'),
             popup_height=self.settings.get('popup_height'),
+            qms_geoservices=self.settings.get('qms_geoservices'),
+            qms_geoservice_detail=self.settings.get('qms_geoservice_detail'),
+            qms_icon_content=self.settings.get('qms_icon_content'),
+            qms_icon_default=self.settings.get('qms_icon_default'),
             adapters=dict(
                 (i.identity, dict(display_name=i.display_name))
                 for i in WebMapAdapter.registry
@@ -69,4 +73,8 @@ class WebMapComponent(Component):
         dict(key='identify_radius', desc="Чувствительность идентификации (3px)"),
         dict(key='popup_width', desc="Ширина всплывающего окна"),
         dict(key='popup_height', desc="Высота всплывающего окна"),
+        dict(key='qms_geoservices', desc="QMS geoservices"),
+        dict(key='qms_geoservice_detail', desc="QMS geoservice detail"),
+        dict(key='qms_icon_content', desc="QMS icon content"),
+        dict(key='qms_icon_default', desc="QMS icon default"),
     )

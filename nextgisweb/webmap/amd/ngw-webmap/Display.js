@@ -38,6 +38,7 @@ define([
     "./tool/Measure",
     // settings
     "ngw/settings!webmap",
+    "ngw/openlayers/layer/XYZ",
     // template
     "dijit/layout/TabContainer",
     "dijit/layout/BorderContainer",
@@ -87,7 +88,8 @@ define([
     ToolBase,
     ToolZoom,
     ToolMeasure,
-    clientSettings
+    clientSettings,
+    XYZ
 ) {
 
     var CustomItemFileWriteStore = declare([ItemFileWriteStore], {
@@ -175,6 +177,14 @@ define([
 
         // Для загрузки изображения
         assetUrl: ngwConfig.assetUrl,
+
+        // QuickMapServices
+        qms: {
+            geoservices: clientSettings["qms_geoservices"],
+            geoservice_detail: clientSettings["qms_geoservice_detail"],
+            icon_content: clientSettings["qms_icon_content"],
+            icon_default: clientSettings["qms_icon_default"]
+        },
 
         constructor: function (options) {
             declare.safeMixin(this, options);
@@ -307,10 +317,36 @@ define([
                     // И добавляем возможность переключения
                     widget.basemapSelect.watch("value", function (attr, oldVal, newVal) {
                         widget.map.layers[oldVal].olLayer.setVisible(false);
+
+                        if (!widget.map.layers[newVal]) {
+                            xhr.get(lang.replace(
+                                widget.qms.geoservice_detail, {
+                                    id: newVal.split("qms_")[1]
+                                }), {handleAs: "json", sync: true})
+                            .then(
+                                function(bm) {
+                                    var layer = new XYZ(newVal, {}, {
+                                        url: bm.url,
+                                        minZoom: bm.z_min || undefined,
+                                        maxZoom: bm.z_max || undefined
+                                    });
+                                    widget.map.layers[newVal] = layer;
+                                    widget.map.olMap.getLayers().insertAt(
+                                        widget.bm_idx, layer.olLayer
+                                    );
+                                    widget.bm_idx += 1;
+                                }
+                            );
+                        }
+
                         widget.map.layers[newVal].olLayer.setVisible(true);
                         widget._baseLayer = widget.map.layers[newVal];
                     });
-                    if (widget._urlParams.base) { widget.basemapSelect.set("value", widget._urlParams.base); }
+                    widget.loadQMSBasemaps().then(
+                        function() {
+                            if (widget._urlParams.base) { widget.basemapSelect.set("value", widget._urlParams.base); }
+                        }
+                    );
                 }
             ).then(undefined, function (err) { console.error(err); });
 
@@ -442,6 +478,30 @@ define([
                     tool.deactivate();
                 }
             });
+        },
+
+        loadQMSBasemaps: function() {
+            var widget = this;
+
+            return xhr.get(widget.qms.geoservices, {
+                handleAs: "json"
+            }).then(
+                function(basemaps) {
+                    widget.basemapSelect.addOption({}); // separator
+                    array.forEach(basemaps, function(bm) {
+                        var icon_url = bm.icon ?
+                            lang.replace(
+                                widget.qms.icon_content, {id: bm.icon}
+                            ) : widget.qms.icon_default;
+
+                        widget.basemapSelect.addOption({
+                            value: lang.replace("qms_{id}", {id: bm.id}),
+                            label: lang.replace("<img src='{url}' /> {name}",
+                                {url: icon_url, name: bm.name})
+                        });
+                    });
+                }
+            )
         },
 
         loadBookmarks: function () {
@@ -609,7 +669,7 @@ define([
             });
 
             // Инициализация базовых слоев
-            var idx = 0;
+            widget.bm_idx = 0;
             array.forEach(clientSettings.basemaps, function (bm) {
                 var MID = this._mid.basemap[bm.base.mid];
 
@@ -618,7 +678,7 @@ define([
                 var sourceOptions = lang.clone(bm.source);
 
                 if (baseOptions.keyname === undefined) {
-                    baseOptions.keyname = "basemap_" + idx;
+                    baseOptions.keyname = "basemap_" + widget.bm_idx;
                 }
 
                 try {
@@ -628,11 +688,10 @@ define([
                     }
                     layer.isBaseLayer = true;
                     this.map.addLayer(layer);
+                    widget.bm_idx += 1;
                 } catch (err) {
                     console.warn("Can't initialize layer [" + baseOptions.keyname + "]: " + err);
                 }
-
-                idx = idx + 1;
             }, this);
 
             this.zoomToInitialExtentButton.on("click", function() {
