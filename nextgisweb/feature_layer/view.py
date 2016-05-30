@@ -135,6 +135,7 @@ def store_collection(layer, request):
     features = query()
 
     result = []
+
     for fobj in features:
         fdata = dict(
             [(pref(k), v) for k, v in fobj.fields.iteritems()],
@@ -161,7 +162,7 @@ def store_item(layer, request):
     box = request.headers.get('x-feature-box')
     ext = request.headers.get('x-feature-ext')
 
-    query = layer.feature_query()
+    query = layer.feature_query(request=request)
     query.filter_by(id=request.matchdict['feature_id'])
 
     if box:
