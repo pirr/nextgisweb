@@ -296,14 +296,8 @@ class PostgisLayer(Base, Resource, SpatialLayerMixin, LayerFieldsMixin):
         )
 
     # IFeatureLayer
-
-    @property
-    def feature_query(self):
-
-        class BoundFeatureQuery(FeatureQueryBase):
-            layer = self
-
-        return BoundFeatureQuery
+    def feature_query(self, **kwargs):
+        return FeatureQueryBase(self)
 
     def field_by_keyname(self, keyname):
         for f in self.fields:
@@ -363,7 +357,9 @@ class FeatureQueryBase(object):
         IFeatureQueryIntersects,
         IFeatureQueryOrderBy)
 
-    def __init__(self):
+    def __init__(self, layer):
+        self.layer = layer
+
         self._srs = None
         self._geom = None
         self._box = None

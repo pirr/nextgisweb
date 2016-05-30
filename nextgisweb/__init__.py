@@ -43,6 +43,7 @@ def pkginfo():
         'wmsserver',
         'wfsserver',
         'file_upload',
+        'query_layer',
     )
 
     return dict(
@@ -104,4 +105,5 @@ def amd_packages():
         ('ngw-auth', 'nextgisweb:auth/amd/ngw-auth'),
         ('ngw-file-upload', 'nextgisweb:file_upload/amd/ngw-file-upload'),
         ('ngw-spatial-ref-sys', 'nextgisweb:spatial_ref_sys/amd/ngw-spatial-ref-sys'),
+        ('ngw-query-layer', 'nextgisweb:query_layer/amd/ngw-query-layer'),
     )
