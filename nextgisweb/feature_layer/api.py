@@ -187,7 +187,7 @@ def serialize(feat):
 def iget(resource, request):
     request.resource_permission(PERM_READ)
 
-    query = resource.feature_query()
+    query = resource.feature_query(request=request)
     query.geom()
 
     query.filter_by(id=request.matchdict['fid'])
@@ -236,7 +236,7 @@ def idelete(resource, request):
 def cget(resource, request):
     request.resource_permission(PERM_READ)
 
-    query = resource.feature_query()
+    query = resource.feature_query(request=request)
     query.geom()
 
     result = map(serialize, query())

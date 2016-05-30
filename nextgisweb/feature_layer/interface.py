@@ -32,7 +32,8 @@ class IFeatureLayer(IResourceBase):
     geometry_type = Attribute(""" Тип геометрии слоя GEOM_TYPE """)
     fields = Attribute(""" Список полей """)
 
-    feature_query = Attribute(""" Класс запроса объектов """)
+    def feature_query(self, **kwargs):
+        """ Объект запроса записей слоя """
 
     def field_by_keyname(self, keyname):
         """ Получить поле по ключу. Если поле не найдено, то должно
