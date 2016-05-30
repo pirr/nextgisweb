@@ -4,20 +4,27 @@
 <!--[if gt IE 8]><!--> <html> <!--<![endif]-->
 <%
     import os
+    import re
     import json
     from bunch import Bunch
 %>
 <head>
     <title>
+        <% page_title = '' %>
         %if hasattr(self, 'title'):
-            ${self.title()} ::
+            <% page_title += self.title() + ' | ' %>
         %endif
 
-        ${request.env.core.settings['system.name']}
+        <% page_title += request.env.core.settings['system.full_name'] %>
+        ${page_title}
     </title>
+
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta property="og:image" content="http://nextgis.ru/img/webgis-for-social.png"/>
+    <meta property="og:description" content="${tr(_('Your Web GIS at nextgis.com'))}"/>
+
     <link href="${request.route_url('pyramid.favicon')}"
         rel="shortcut icon" type="image/x-icon"/>
     <link href="${request.static_url('nextgisweb:static/css/pure-0.6.0-min.css')}"
@@ -74,8 +81,17 @@
                         %if request.user.is_administrator:
                             <li class="menu-list__item"><a href="${request.route_url('pyramid.control_panel')}">${tr(_('Control panel'))}</a></li>
                         %endif    
-                        %if request.env.pyramid.help_page is not None:
-                            <li class="menu-list__item"><a href="${request.route_url('pyramid.help_page')}">${tr(_('Help'))}</a></li>
+                        
+                        <% help_page = request.env.pyramid.help_page.get(request.locale_name) %>
+                        %if help_page:
+                            <li class="menu-list__item">
+                                %if re.match("^http[s]?", help_page):
+                                    <a href="${help_page}" target="_blank">
+                                %else:
+                                    <a href="${request.route_url('pyramid.help_page')}">
+                                %endif
+                                ${tr(_('Help'))}</a>
+                            </li>
                         %endif
                     </ul>
                     <ul class="user-menu-list list-inline">
