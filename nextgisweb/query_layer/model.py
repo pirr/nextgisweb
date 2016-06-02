@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function, absolute_import
 
+import re
+
 from zope.interface import implements
 
-from nextgisweb.feature_layer import IFeatureLayer
+from nextgisweb.feature_layer import IFeatureLayer, LayerFieldsMixin
 from nextgisweb.models import declarative_base
 from nextgisweb.resource import (
     Resource,
@@ -22,7 +24,7 @@ from .util import _
 Base = declarative_base()
 
 
-class QueryLayer(Base, Resource):
+class QueryLayer(Base, Resource, LayerFieldsMixin):
     identity = 'query_layer'
     cls_display_name = _("Query layer")
 
@@ -31,6 +33,7 @@ class QueryLayer(Base, Resource):
     implements(IFeatureLayer)
 
     cql = db.Column(db.Unicode, nullable=False)
+    flist = db.Column(db.Unicode, nullable=True)
 
     @classmethod
     def check_parent(cls, parent):
@@ -50,7 +53,16 @@ class QueryLayer(Base, Resource):
         request = kwargs.get('request')
         query = self.parent.feature_query()
 
-        # Example: query.filter_by(NAME=request.user.keyname)
+        if self.flist:
+            query.fields(*self.flist.split(","))
+
+        if self.cql:
+            m = re.match(r'^(.*)=(.*)$', self.cql)
+            if m:
+                field, value = m.groups()
+                value = value.replace("{{login}}", request.user.keyname)
+                query.filter_by(**{field: value})
+
         return query
 
     # ??
@@ -78,3 +90,4 @@ class QueryLayerSerializer(Serializer):
     resclass = QueryLayer
 
     cql = SP(read=PR_READ, write=PR_UPDATE)
+    flist = SP(read=PR_READ, write=PR_UPDATE)
