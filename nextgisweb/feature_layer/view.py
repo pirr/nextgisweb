@@ -115,7 +115,10 @@ def store_collection(layer, request):
 
     field_list = json.loads(request.headers.get('x-field-list', "[]"))
     if len(field_list) > 0:
-        query.fields(*field_list)
+        if query._fields is None:
+            query.fields(*field_list)
+        else:
+            query.fields(*set(field_list).intersection(query._fields))
 
     box = request.headers.get('x-feature-box')
     if box:
