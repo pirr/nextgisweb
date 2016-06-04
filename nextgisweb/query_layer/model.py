@@ -81,6 +81,18 @@ class QueryLayer(Base, Resource, LayerFieldsMixin):
         self.parent.feature_label_field = val
 
 
+class _srs_attr(SP):
+
+    def getter(self, srlzr):
+        return dict(id=srlzr.obj.parent.srs_id)
+
+
+class _geometry_type_attr(SP):
+
+    def getter(self, srlzr):
+        return srlzr.obj.parent.geometry_type
+
+
 PR_READ = ResourceScope.read
 PR_UPDATE = ResourceScope.update
 
@@ -91,3 +103,5 @@ class QueryLayerSerializer(Serializer):
 
     cql = SP(read=PR_READ, write=PR_UPDATE)
     flist = SP(read=PR_READ, write=PR_UPDATE)
+    srs = _srs_attr(read=PR_READ)
+    geometry_type = _geometry_type_attr(read=PR_READ)
