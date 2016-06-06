@@ -221,7 +221,7 @@ define([
 
                                 pane.startup();
                                 pane.load();
-                            }).otherwise(console.error);
+                            });
                         }
                     }).placeAt(widget.extController, "last");
                     domClass.add(widget.editButton.domNode, "no-label");
@@ -229,7 +229,7 @@ define([
                     setTimeout(function () { widget.resize();}, 10);
 
                 });
-            }).otherwise(console.error);
+            });
         }
     });
 
@@ -300,7 +300,7 @@ define([
                         }
                     }).then(function (response) {
                         tool._responsePopup(response, point, layerLabels);
-                    }).otherwise(console.error);
+                    });
                 }
             });
 
