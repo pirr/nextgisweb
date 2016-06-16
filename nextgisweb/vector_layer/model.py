@@ -653,6 +653,7 @@ class FeatureQueryBase(object):
         self._box = None
 
         self._geom_len = None
+        self._distance_to = None
 
         self._fields = None
         self._limit = None
@@ -674,6 +675,9 @@ class FeatureQueryBase(object):
 
     def geom_length(self):
         self._geom_len = True
+
+    def distance_to(self, target_geom):
+        self._distance_to = target_geom
 
     def box(self):
         self._box = True
@@ -730,6 +734,15 @@ class FeatureQueryBase(object):
 
         if self._geom_len:
             columns.append(db.func.st_length(db.func.geography(db.func.st_transform(geomexpr, 4326))).label('geom_len'))
+
+        if self._distance_to:
+            target_geom = ga.WKTSpatialElement(str(self._distance_to), srsid)
+            columns.append(
+                db.func.st_distance(
+                    db.func.geography(db.func.st_transform(geomexpr, 4326)),
+                    db.func.geography(db.func.st_transform(target_geom, 4326)),
+                ).label('distance_to')
+            )
 
         if self._box:
             columns.extend((
@@ -792,6 +805,7 @@ class FeatureQueryBase(object):
 
             _geom = self._geom
             _geom_len = self._geom_len
+            _distance_to = self._distance_to
             _box = self._box
             _limit = self._limit
             _offset = self._offset
@@ -816,6 +830,9 @@ class FeatureQueryBase(object):
                     calculated = dict()
                     if self._geom_len:
                         calculated['geom_len'] = row['geom_len']
+
+                    if self._distance_to:
+                        calculated['distance_to'] = row['distance_to']
 
                     yield Feature(
                         layer=self.layer, id=row.id,
