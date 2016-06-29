@@ -88,7 +88,7 @@ class DataScope(Scope):
     label = _("Data")
 
     read = P(_("Read"))                   #: Чтение
-    write = P(_("Write")).require(read)   #: Запись
+    write = P(_("Write"))                 #: Запись
 
 
 class ConnectionScope(Scope):
