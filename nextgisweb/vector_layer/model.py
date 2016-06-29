@@ -736,10 +736,16 @@ class FeatureQueryBase(object):
         self._offset = offset
 
     def filter(self, *args):
-        self._filter = args
+        if self._filter is None:
+            self._filter = args
+        else:
+            self._filter += args
 
     def filter_by(self, **kwargs):
-        self._filter_by = kwargs
+        if self._filter_by is None:
+            self._filter_by = kwargs
+        else:
+            self._filter_by.update(kwargs)
 
     def order_by(self, *args):
         self._order_by = args
