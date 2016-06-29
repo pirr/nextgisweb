@@ -16,6 +16,7 @@ from .interface import IFeatureLayer, IWritableFeatureLayer, FIELD_TYPE
 from .feature import Feature
 from .extension import FeatureExtension
 
+from nextgisweb.geometry import box
 
 PERM_READ = DataScope.read
 PERM_WRITE = DataScope.write
@@ -238,6 +239,37 @@ def cget(resource, request):
 
     query = resource.feature_query(request=request)
     query.geom()
+
+    # Фильтрация объектов по атрибутам
+    fnames = request.context.fields
+
+    for fname in fnames:
+        val = request.GET.get(fname.keyname)
+
+        if val is not None:
+            if fname.datatype == u'STRING':
+                val = unicode(val)
+            elif fname.datatype == u'INTEGER':
+                val = int(val)
+            elif fname.datatype == u'REAL':
+                val = float(val)
+            elif fname.datatype == u'DATETIME':
+                val = json.loads(val)
+                for key, value in val.iteritems():
+                    query.filter((fname.keyname, key, value))
+
+                continue
+
+
+            kwargs = {fname.keyname: val}
+            query.filter_by(**kwargs)
+
+    # Фильтрация объектов по охвату
+    bbox = request.GET.get('bbox')
+    if bbox is not None:
+        bbox = [float(x) for x in bbox.split(',')]
+        bbox = box(*bbox, srid=3857)
+        query.intersects(bbox)
 
     result = map(serialize, query())
 
