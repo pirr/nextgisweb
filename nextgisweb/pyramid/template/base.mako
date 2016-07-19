@@ -62,7 +62,7 @@
 
 </head>
 
-<body class="claro">
+<body class="claro nextgis">
 
     %if not custom_layout:
         <div class="layout ${'maxwidth' if maxwidth else ''}">
