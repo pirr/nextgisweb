@@ -14,6 +14,7 @@ define([
     "dijit/layout/BorderContainer",
     "dijit/layout/ContentPane",
     "dijit/layout/TabContainer",
+    "dojox/mvc/equals",
     "ngw-pyramid/i18n!resource",
     "ngw/route",
     "xstyle/css!./resource/CompositeWidget.css"
@@ -32,6 +33,7 @@ define([
     BorderContainer,
     ContentPane,
     TabContainer,
+    equals,
     i18n,
     route
 ) {
@@ -42,6 +44,8 @@ define([
     var CompositeWidget = declare("ngw.resource.CompositeWidget", BorderContainer, {
         style: "width: 100%; height: 100%; padding: 1px;",
         gutters: false,
+
+        origData: null,
 
         buildRendering: function () {
             this.inherited(arguments);
@@ -127,9 +131,22 @@ define([
         startup: function () {
             this.inherited(arguments);
 
+            var widget = this;
             if (this.operation === "read" || this.operation === "update") {
-                this.refreshObj();
+                this.refreshObj().then(function () {
+                    widget.serialize().then(function (data) {
+                        widget.origData = data;
+                    });
+                });
             }
+
+            window.onbeforeunload = function (evt) {
+                var message = i18n.gettext("Resource contains unsaved changes.");
+                if (widget.isDirty()) {
+                    evt.returnValue = message;
+                    return message;
+                }
+            };
         },
 
         // Сериализация и валидация
@@ -374,12 +391,24 @@ define([
         },
 
         refreshObj: function () {
-            xhr(route.resource.item(this.id), {
+            return xhr(route.resource.item(this.id), {
                 handleAs: "json"
             }).then(
                 lang.hitch(this, this.deserialize)
             );
         },
+
+        isDirty: function() {
+            var dirty = false,
+                serialized = false;
+
+            this.serialize().then(lang.hitch(this, function (data) {
+                dirty = !equals(data, this.origData);
+                serialized = true;
+            }));
+            while (!serialized) { /* Waiting for serialization */ }
+            return dirty;
+        }
     });
 
     CompositeWidget.bootstrap = function (options) {
