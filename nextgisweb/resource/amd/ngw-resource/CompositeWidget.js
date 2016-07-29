@@ -265,6 +265,7 @@ define([
                         widget.serialize().then(
                             function /* callback */ (data) {
                                 console.debug("Serialization completed");
+                                widget.origData = data;
                                 widget.request({
                                     url: args.url,
                                     method: args.method,
