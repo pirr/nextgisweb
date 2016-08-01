@@ -1,9 +1,10 @@
-/* Dgrid */
-
 .nextgis.claro{
+
+    /* Dgrid */
+
     .dgrid-header, 
     .dgrid-footer{
-        background: none;
+        background: @lightBlue-2;
         filter: none;
 
         .dgrid-cell{
@@ -19,27 +20,27 @@
         border-color: @light-border-2;
     }
 
-    .dgrid-sort-arrow{
-        display: none;
+    .dgrid-row{
+      background: #fff;
+
+      &:hover{
+          background-color: #f8f8f8;
+      }
+
+      &.dgrid-selected{
+        background-color: #fdf8c3;
+      }
     }
 
-    .dgrid-sortable .dgrid-resize-header-container{
-        &:after{
-          &:extend(.sort-header:after);
-          top: -1px;
-          margin-left: 3px;
-        }
+    /* Forms */
 
-        &:hover:after{
-          &:extend(.sort-header:hover:after);
-        }
+    .dijitTextBoxHover{
+      background-color: #fff;
+    }
 
-        &.dgrid-sort-up:after{
-          &:extend(.sort-down:after);
-        }
+    /* Tabs */
 
-        &.dgrid-sort-down:after{
-          &:extend(.sort-up:after);
-        }
+    .dijitTabError{
+      color: @red;
     }
 }
