@@ -18,7 +18,7 @@ requires = [
     'bunch',
     'flufl.enum',
     'waitress',
-    'pygdal' + (('>=' + gv + '.0,<=' + gv + '.9999') if gv else ''),
+    'pygdal' + (('>=' + '1.11.0' + '.0,<=' + gv + '.9999') if gv else ''),
     'psycopg2',
     'geoalchemy2',
     'shapely',

@@ -4,8 +4,6 @@ from __future__ import unicode_literals
 import uuid
 import types
 import zipfile
-import tempfile
-import shutil
 import ctypes
 import operator
 import osgeo
@@ -13,7 +11,7 @@ import osgeo
 from datetime import datetime
 from distutils.version import LooseVersion
 from zope.interface import implements
-from osgeo import ogr, osr
+from osgeo import ogr, osr, gdal
 
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.ext.compiler import compiles
@@ -624,8 +622,8 @@ class _source_attr(SP):
 
         try:
             if iszip:
-                ogrfn = tempfile.mkdtemp()
-                zipfile.ZipFile(datafile, 'r').extractall(path=ogrfn)
+                gdal.SetConfigOption(b'CPL_VSIL_ZIP_ALLOWED_EXTENSIONS', b'.data')
+                ogrfn = '/vsizip/' + datafile
             else:
                 ogrfn = datafile
 
@@ -650,8 +648,7 @@ class _source_attr(SP):
             self._ogrlayer(srlzr.obj, ogrlayer, recode)
 
         finally:
-            if iszip:
-                shutil.rmtree(ogrfn)
+            pass
 
 
 class _geometry_type_attr(SP):
