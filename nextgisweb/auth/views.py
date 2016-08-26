@@ -120,13 +120,14 @@ def setup_pyramid(comp, config):
             result = super(AuthGroupWidget, self).validate()
             self.error = []
 
-            conflict = Group.filter_by(
-                keyname=self.data.get("keyname")).first()
-            if conflict:
-                result = False
-                self.error.append(dict(
-                    message=self.request.localizer.translate(
-                        _("Group name is not unique."))))
+            if self.operation == 'create':
+                conflict = Group.filter_by(
+                    keyname=self.data.get("keyname")).first()
+                if conflict:
+                    result = False
+                    self.error.append(dict(
+                        message=self.request.localizer.translate(
+                            _("Group name is not unique."))))
 
             return result
 
@@ -203,13 +204,14 @@ def setup_pyramid(comp, config):
             result = super(AuthUserWidget, self).validate()
             self.error = []
 
-            conflict = User.filter_by(
-                keyname=self.data.get("keyname")).first()
-            if conflict:
-                result = False
-                self.error.append(dict(
-                    message=self.request.localizer.translate(
-                        _("Login is not unique."))))
+            if self.operation == 'create':
+                conflict = User.filter_by(
+                    keyname=self.data.get("keyname")).first()
+                if conflict:
+                    result = False
+                    self.error.append(dict(
+                        message=self.request.localizer.translate(
+                            _("Login is not unique."))))
 
             return result
 
