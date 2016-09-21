@@ -10,8 +10,8 @@
         </input>
 
         <input data-dojo-attach-point="keyname"
-            data-dojo-type="ngw-pyramid/form/KeynameTextBox"
-            data-dojo-props="required: true, colspan: 2"
+            data-dojo-type="dijit/form/ValidationTextBox"
+            data-dojo-props="pattern: '[A-z][A-z0-9_\\-@.]*', required: true, colspan: 2"
             title="{{gettext 'Login'}}"
             style="width: 100%">
         </input>
